@@ -1,5 +1,7 @@
 "use client";  // 👈 must be the first line!
 
+export const dynamic = "force-dynamic";
+
 import React, { useState, useEffect } from "react";
 
 const FetchUserPage = () => {
