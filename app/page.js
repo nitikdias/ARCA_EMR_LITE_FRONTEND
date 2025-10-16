@@ -10,7 +10,7 @@ import Header from './header/page';
 import { useUser } from "@/context/userContext";
 import {useRecording } from '@/context/recordingContext'; // Import the context
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
+
 
 export default function App() {
   // [Existing state/hooks as in your code above]
@@ -22,15 +22,10 @@ export default function App() {
   const visualizerRef = useRef(null);
   const visualAnimRef = useRef(null);
 
-  const pdfRef = useRef();
 
   const [selectedLanguage, setSelectedLanguage] = useState("en"); // default English
 
-
-  
-  
   const { meetingId } = useMeeting(); // get the current meeting ID from context
-
 
   const [segments, setSegments] = useState([]);
   const [transcript, setTranscript] = useState('');
@@ -39,8 +34,6 @@ export default function App() {
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [readyForSummary, setReadyForSummary] = useState(false);
-
-
 
   const [mainTitle, setMainTitle] = useState('ARCA Lite EMR'); // <-- Added
   const [editingTitle, setEditingTitle] = useState(false); // <-- Added
@@ -84,8 +77,8 @@ export default function App() {
     hpi: { title: "History of Present Illness", content: "", editingTitle: false, editingContent: false },
     physicalExam: { title: "Physical Examination", content: "", editingTitle: false, editingContent: false },
     investigations: { title: "Investigations", content: "", editingTitle: false, editingContent: false },
-    prescription: { title: "Prescription & Initial Management", content: "", editingTitle: false, editingContent: false },
-    assessment: { title: "Assessment & Plan", content: "", editingTitle: false, editingContent: false }
+    prescription: { title: "Prescription and Initial Management", content: "", editingTitle: false, editingContent: false },
+    assessment: { title: "Assessment and Plan", content: "", editingTitle: false, editingContent: false }
   });
 
   const { canRecord, setCanRecord, isRecording, setIsRecording } = useRecording();
@@ -114,24 +107,40 @@ const handleLanguageChange = async (e) => {
   }
 };
 
-const saveSectionToDB = async (meeting_id, sectionKey, content) => {
-    try {
-      const response = await fetch("http://localhost:8000/update_transcript_section", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-        meeting_id: meeting_id,
-        section_key: sectionKey,
-        content: content,
-      }),
-      });
+const saveSectionToDB = async (meetingId, sectionKey, content) => {
+  if (!meetingId || !sectionKey) {
+    console.error("Missing meetingId or sectionKey");
+    return;
+  }
 
-      if (!response.ok) throw new Error("Failed to save section");
-      console.log("Section updated successfully");
-    } catch (err) {
-      console.error("Error saving section:", err);
+  const titles = Object.fromEntries(
+    Object.entries(sections).map(([k, v]) => [k, v.title || k])
+  );
+
+  try {
+    const response = await fetch("http://localhost:8000/update_transcript_section", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        meeting_id: meetingId,
+        section_key: sectionKey,
+        content,
+        titles,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to save section: ${errorText}`);
     }
-  };
+
+    console.log("Section updated successfully");
+  } catch (err) {
+    console.error("Error saving section:", err);
+  }
+};
+
+
 
 
 const router = useRouter();
@@ -275,12 +284,14 @@ const parseMedicalSummary = (summaryText, titles = {}) => {
   return parsed;
 };
 
-  const renderSection = (key) => {
+  // Dynamic renderSection function
+const renderSection = (key) => {
   const section = sections[key];
   if (!section) return null;
 
   return (
     <div
+      key={key}
       style={{
         backgroundColor: "#f8fafc",
         border: "1px solid #e2e8f0",
@@ -298,7 +309,6 @@ const parseMedicalSummary = (summaryText, titles = {}) => {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          color: "black",
         }}
       >
         {section.editingTitle ? (
@@ -359,18 +369,41 @@ const parseMedicalSummary = (summaryText, titles = {}) => {
           </h3>
         )}
 
-        {/* ✏️ Edit / 💾 Save Button */}
-        <button
+        {/* Edit / Save Button */}
+      <button
         onClick={async () => {
           if (section.editingContent) {
-            const updatedContent = section.content;
-            setSections({
-              ...sections,
-              [key]: { ...section, editingContent: false },
+            let updatedContent = section.content || "";
+
+            // 🧠 Bullet-aware deduplication
+            const lines = updatedContent
+              .split("\n")
+              .map(line => line.trim())
+              .filter(line => line.length > 0);
+
+            const uniqueLines = Array.from(
+              new Set(
+                lines.map(line => line.replace(/^[-•\s]+/, "").trim().toLowerCase())
+              )
+            ).map((normalized, idx) => {
+              // Find the original line (case-insensitive match)
+              const original = lines.find(
+                l => l.replace(/^[-•\s]+/, "").trim().toLowerCase() === normalized
+              );
+              return original.startsWith("-") ? original : `- ${original}`;
             });
 
-            // ✅ Use meeting_id from context here
-            await saveSectionToDB(meetingId, key, updatedContent);
+            updatedContent = uniqueLines.join("\n");
+
+            // Exit edit mode
+            setSections({
+              ...sections,
+              [key]: { ...section, content: updatedContent, editingContent: false },
+            });
+
+            // ✅ Save cleaned content
+            await saveSectionToDB(meetingId, key, updatedContent, section.title);
+
           } else {
             setSections({
               ...sections,
@@ -379,11 +412,19 @@ const parseMedicalSummary = (summaryText, titles = {}) => {
           }
         }}
       >
-    
-        {section.editingContent ? "💾" : <img src="images/edit.png" alt="Edit" style={{ width: '16px', height: '16px' }} />}
+        {section.editingContent ? (
+          "💾"
+        ) : (
+          <img
+            src="images/edit.png"
+            alt="Edit"
+            style={{ width: "16px", height: "16px" }}
+          />
+        )}
       </button>
 
-        {/* 🎤 Dictate Button */}
+
+        {/* Dictate Button */}
         <button
           onClick={async () => {
             const isDictating = section.dictating || false;
@@ -396,9 +437,7 @@ const parseMedicalSummary = (summaryText, titles = {}) => {
               });
 
               try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                  audio: true,
-                });
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 const mediaRecorder = new MediaRecorder(stream);
                 mediaRecorderRef.current = mediaRecorder;
                 audioChunksRef.current = [];
@@ -407,27 +446,38 @@ const parseMedicalSummary = (summaryText, titles = {}) => {
                   audioChunksRef.current.push(e.data);
 
                 mediaRecorder.onstop = async () => {
-                  const audioBlob = new Blob(audioChunksRef.current, {
-                    type: "audio/wav",
-                  });
+                  const audioBlob = new Blob(audioChunksRef.current, { type: "audio/wav" });
                   const formData = new FormData();
                   formData.append("audio", audioBlob, "dictation.wav");
 
                   try {
-                    const response = await fetch(
-                      "http://localhost:8000/dictate",
-                      {
-                        method: "POST",
-                        body: formData,
-                      }
-                    );
+                    const response = await fetch("http://localhost:8000/dictate", { method: "POST", body: formData });
                     const data = await response.json();
 
                     if (data.transcript) {
-                      const newContent =
+                      let newContent =
                         (section.content || "") +
                         (section.content?.trim() ? "\n- " : "- ") +
                         data.transcript.trim();
+
+                      // 🧠 Clean duplicates bullet-aware
+                      const lines = newContent
+                        .split("\n")
+                        .map(line => line.trim())
+                        .filter(line => line.length > 0);
+
+                      const uniqueLines = Array.from(
+                        new Set(
+                          lines.map(line => line.replace(/^[-•\s]+/, "").trim().toLowerCase())
+                        )
+                      ).map(normalized => {
+                        const original = lines.find(
+                          l => l.replace(/^[-•\s]+/, "").trim().toLowerCase() === normalized
+                        );
+                        return original.startsWith("-") ? original : `- ${original}`;
+                      });
+
+                      newContent = uniqueLines.join("\n");
 
                       setSections((prev) => ({
                         ...prev,
@@ -438,9 +488,10 @@ const parseMedicalSummary = (summaryText, titles = {}) => {
                         },
                       }));
 
-                      // Save updated content to DB
-                      await saveSectionToDB(meetingId, key, newContent);
-                    } else {
+                      await saveSectionToDB(meetingId, key, newContent, section.title);
+                    }
+
+                    else {
                       alert("No transcript received");
                       setSections((prev) => ({
                         ...prev,
@@ -475,9 +526,7 @@ const parseMedicalSummary = (summaryText, titles = {}) => {
 
               if (mediaRecorderRef.current) {
                 mediaRecorderRef.current.stop();
-                mediaRecorderRef.current.stream
-                  .getTracks()
-                  .forEach((track) => track.stop());
+                mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
               }
             }
           }}
@@ -491,15 +540,12 @@ const parseMedicalSummary = (summaryText, titles = {}) => {
             flexShrink: 0,
           }}
           title={section.dictating ? "Stop dictation" : "Start dictation"}
-          aria-label={`${
-            section.dictating ? "Stop" : "Start"
-          } dictation for ${section.title}`}
           type="button"
         >
           {section.dictating ? (
-            <img src="images/stop.png" alt="Stop" style={{ width: '16px', height: '16px' }} />
+            <img src="images/stop.png" alt="Stop" style={{ width: "16px", height: "16px" }} />
           ) : (
-            <img src="images/mic.png" alt="Dictate" style={{ width: '16px', height: '16px' }} />
+            <img src="images/mic.png" alt="Dictate" style={{ width: "16px", height: "16px" }} />
           )}
         </button>
       </div>
@@ -711,14 +757,17 @@ function CodePenWaveform({ paused }) {
     });
 
     if (parsed) {
-      setSections(prev => ({
-        ...prev,
-        hpi: { ...prev.hpi, content: parsed.hpi },
-        physicalExam: { ...prev.physicalExam, content: parsed.physicalExam },
-        investigations: { ...prev.investigations, content: parsed.investigations },
-        prescription: { ...prev.prescription, content: parsed.prescription },
-        assessment: { ...prev.assessment, content: parsed.assessment }
-      }));
+      const newSections = {};
+      Object.keys(parsed).forEach((key) => {
+        newSections[key] = {
+          title: sections[key]?.title || key,
+          content: parsed[key],
+          editingTitle: sections[key]?.editingTitle || false,
+          editingContent: sections[key]?.editingContent || false,
+        };
+      });
+      setSections(newSections);
+
     }
 
     toast.success("Summary generated successfully.");
@@ -812,31 +861,7 @@ function CodePenWaveform({ paused }) {
     scheduleNext(1);
   }
 
-  // --- AUDIO VISUALIZER LOGIC BELOW ---
-  function drawVisualizer() {
-    const canvas = visualizerRef.current;
-    const analyser = analyserRef.current;
-    if (!canvas || !analyserRef.current) return;
-    const ctx = canvas.getContext("2d");
-    const WIDTH = canvas.width;
-    const HEIGHT = canvas.height;
-    analyser.fftSize = 32;
-    const bufferLength = analyser.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
 
-    analyser.getByteFrequencyData(dataArray);
-    ctx.clearRect(0, 0, WIDTH, HEIGHT);
-    const barWidth = WIDTH / bufferLength;
-    for (let i = 0; i < bufferLength; i++) {
-      const barHeight = dataArray[i] * 0.7;
-      ctx.fillStyle = "#3b82f6";
-      ctx.fillRect(i * barWidth, HEIGHT - barHeight, barWidth - 2, barHeight);
-    }
-    if (recording && !paused) {
-      animationIdRef.current = requestAnimationFrame(drawVisualizer); 
-    }
-  }
-  // --- END AUDIO VISUALIZER LOGIC ---
 
  // 1. Start Recording with new stream
 async function startRec(resetTimer = true) {
@@ -910,7 +935,7 @@ async function pauseRec() {
 // 3. RESUME: Start again (this sets up a new context/stream)
 async function resumeRec() {
   setPaused(false);
-  await startRec(false);  // Pass false to NOT reset recording time and state
+  await startRec(true);  // Pass false to NOT reset recording time and state
 }
 
 
@@ -972,30 +997,40 @@ async function stopRec() {
 
 const generatePDF = async () => {
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
-
-  const margin = 40;
+  const margin = 36; // ~0.5"
   const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const contentWidth = pageWidth - margin * 2;
+  const lineHeight = 1.35; // consistent line-height
+  const secHeaderH = 26;
+  const secPadding = 10;
 
-  // Add logo (must be PNG/JPG)
+  const paginateIfNeeded = (needed, topPad = 0) => {
+    if (y + needed > pageHeight - margin) {
+      doc.addPage();
+      y = margin + topPad;
+    }
+  };
+
+  // Logo
   const logoImg = new Image();
-  logoImg.src = "/images/app-logo.png"; // convert your SVG to PNG
-  await new Promise((resolve) => {
-    logoImg.onload = resolve;
-  });
-  const logoWidth = 30;
+  logoImg.src = "/images/app-logo.png";
+  await new Promise((resolve) => { logoImg.onload = resolve; });
+  const logoWidth = 36;
   const logoHeight = (logoImg.height / logoImg.width) * logoWidth;
   doc.addImage(logoImg, "PNG", pageWidth - margin - logoWidth, margin, logoWidth, logoHeight);
 
-  // Header
-  doc.setFontSize(20);
+  // Title
   doc.setFont("helvetica", "bold");
-  doc.text("Clinical Summary & Transcript", pageWidth / 2, margin + 30, { align: "center" });
+  doc.setFontSize(20);
+  doc.text("Clinical Summary & Transcript", pageWidth / 2, margin + 24, { align: "center" });
 
+  // Top rule
   doc.setLineWidth(0.5);
   doc.setDrawColor(200);
-  doc.line(margin, margin + 40, pageWidth - margin, margin + 40); // subtle line
+  doc.line(margin, margin + 34, pageWidth - margin, margin + 34);
 
-  let y = margin + 60;
+  let y = margin + 52;
 
   const sectionsOrder = ["hpi", "physicalExam", "investigations", "prescription", "assessment"];
 
@@ -1003,38 +1038,105 @@ const generatePDF = async () => {
     const section = sections[key];
     if (!section) return;
 
-    // Section header box
-    doc.setFillColor(230); // light gray
-    doc.roundedRect(margin, y, pageWidth - 2 * margin, 25, 5, 5, "F"); 
-    doc.setFontSize(14);
+    // Section header
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(33, 37, 51);
-    doc.text(section.title, margin + 10, y + 17);
+    doc.setFontSize(13);
+    const headerH = secHeaderH;
 
-    y += 35;
-
-    // Section content box
-    doc.setFillColor(245); // lighter gray
-    const contentLines = doc.splitTextToSize(section.content || "No content", pageWidth - 2 * margin - 20);
-    doc.roundedRect(margin, y, pageWidth - 2 * margin, contentLines.length * 18 + 10, 5, 5, "F");
-    doc.setFontSize(12);
+    // Prepare content
     doc.setFont("helvetica", "normal");
+    doc.setFontSize(12);
+    doc.setLineHeightFactor(lineHeight);
+    const text = section.content && section.content.trim() ? section.content : "Not specified in the transcript.";
+    const wrapped = doc.splitTextToSize(text, contentWidth - secPadding * 2);
+    const lines = wrapped.length;
+    const fontSize = 12;
+    const textHeight = (lines * fontSize * lineHeight - fontSize * (lineHeight - 1)) / doc.internal.scaleFactor;
+
+    // Total block height = header + content box + padding
+    const contentBoxH = textHeight + secPadding * 2;
+    const blockH = headerH + 8 + contentBoxH;
+
+    paginateIfNeeded(blockH);
+
+    // Header box
+    doc.setFillColor(230);
+    doc.roundedRect(margin, y, contentWidth, headerH, 5, 5, "F");
+    doc.setTextColor(33, 37, 51);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.text(section.title, margin + secPadding, y + headerH - 8);
+    y += headerH + 8;
+
+    // Content box
+    doc.setFillColor(245);
+    doc.roundedRect(margin, y, contentWidth, contentBoxH, 5, 5, "F");
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(12);
     doc.setTextColor(0, 0, 0);
-    doc.text(contentLines, margin + 10, y + 15);
-    y += contentLines.length * 18 + 25;
+    doc.text(wrapped, margin + secPadding, y + secPadding + 10);
+    y += contentBoxH + 16;
   });
 
-  // Transcript box
-  doc.setFillColor(230, 245, 255); // subtle blue for transcript
-  const transcriptLines = doc.splitTextToSize(transcript || "Transcript will appear here...", pageWidth - 2 * margin - 20);
-  doc.roundedRect(margin, y, pageWidth - 2 * margin, transcriptLines.length * 18 + 10, 5, 5, "F");
+  // Transcript page
+  doc.addPage();
+  y = margin;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  const tHeader = "Transcript";
+  const tHeaderH = secHeaderH;
+  doc.setFillColor(230);
+  doc.roundedRect(margin, y, contentWidth, tHeaderH, 5, 5, "F");
+  doc.setTextColor(33, 37, 51);
+  doc.text(tHeader, margin + secPadding, y + tHeaderH - 8);
+  y += tHeaderH + 8;
+
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(12);
   doc.setTextColor(0, 0, 0);
-  doc.text(transcriptLines, margin + 10, y + 15);
+  doc.setLineHeightFactor(lineHeight);
 
-  // Save PDF
+  const transcriptText = transcript && transcript.trim() ? transcript : "Transcript will appear here...";
+  const tWrapped = doc.splitTextToSize(transcriptText, contentWidth - secPadding * 2);
+  const tLineH = (12 * lineHeight) / doc.internal.scaleFactor;
+
+  // Stream transcript across pages
+  let start = 0;
+  while (start < tWrapped.length) {
+    const availableHeight = pageHeight - margin - y - secPadding * 2;
+    const fitLines = Math.max(1, Math.floor(availableHeight / tLineH));
+    const slice = tWrapped.slice(start, start + fitLines);
+    const sliceHeight = slice.length * tLineH + secPadding * 2;
+
+    doc.setFillColor(230, 245, 255);
+    doc.roundedRect(margin, y, contentWidth, sliceHeight, 5, 5, "F");
+    doc.text(slice, margin + secPadding, y + secPadding + 10);
+
+    start += fitLines;
+    y += sliceHeight + 12;
+
+    if (start < tWrapped.length) {
+      doc.addPage();
+      y = margin;
+      // Re-draw transcript header on new page
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.setFillColor(230);
+      doc.roundedRect(margin, y, contentWidth, tHeaderH, 5, 5, "F");
+      doc.setTextColor(33, 37, 51);
+      doc.text(tHeader + " (cont.)", margin + secPadding, y + tHeaderH - 8);
+      y += tHeaderH + 8;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0);
+      doc.setLineHeightFactor(lineHeight);
+    }
+  }
+
   doc.save("ClinicalSummary.pdf");
 };
+
 
   return (
   <div className="min-h-screen bg-gray-50 font-sans">
@@ -1228,11 +1330,7 @@ const generatePDF = async () => {
 
             {/* Clinical summary content */}
             <div id="clinical-summary-content" className="flex-1 overflow-y-auto">
-              {renderSection('hpi')}
-              {renderSection('physicalExam')}
-              {renderSection('investigations')}
-              {renderSection('prescription')}
-              {renderSection('assessment')}
+              {Object.keys(sections).map((key) => renderSection(key))}
             </div>
           </div>
 

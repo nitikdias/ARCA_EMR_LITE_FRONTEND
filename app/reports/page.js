@@ -287,70 +287,135 @@ export default function ReportPage({ user }) {
                               if (!t) return;
 
                               const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
-                              const margin = 30;
+                              const margin = 36;
                               const pageWidth = doc.internal.pageSize.getWidth();
+                              const pageHeight = doc.internal.pageSize.getHeight();
+                              const contentWidth = pageWidth - margin * 2;
+                              const lineHeight = 1.35;
+                              const headerH = 26;
+                              const pad = 10;
+
                               let y = margin;
 
-                              // Add logo
-                              const logoImg = new Image();
-                              logoImg.src = "/images/app-logo.png";
-                              await new Promise((resolve) => (logoImg.onload = resolve));
-                              const logoWidth = 40;
-                              const logoHeight = (logoImg.height / logoImg.width) * logoWidth;
-                              doc.addImage(logoImg, "PNG", pageWidth - margin - logoWidth, margin, logoWidth, logoHeight);
-                              y += logoHeight + 20;
+                              const paginateIfNeeded = (needed) => {
+                                if (y + needed > pageHeight - margin) {
+                                  doc.addPage();
+                                  y = margin;
+                                }
+                              };
 
-                              // Header
-                              doc.setFontSize(20);
-                              doc.setFont("helvetica", "bold");
-                              doc.text("Clinical Summary & Transcript", pageWidth / 2, y, { align: "center" });
-                              y += 30;
+                              const renderTitle = async () => {
+                                const logoImg = new Image();
+                                logoImg.src = "/images/app-logo.png";
+                                await new Promise((r) => (logoImg.onload = r));
+                                const logoW = 40;
+                                const logoH = (logoImg.height / logoImg.width) * logoW;
+                                doc.addImage(logoImg, "PNG", pageWidth - margin - logoW, margin, logoW, logoH);
 
-                              // Draw line
-                              doc.setLineWidth(0.5);
-                              doc.setDrawColor(200);
-                              doc.line(margin, y, pageWidth - margin, y);
-                              y += 20;
-
-                              // Summary
-                              if (t.summary) {
-                                doc.setFillColor(230);
-                                doc.roundedRect(margin, y, pageWidth - 2 * margin, 25, 5, 5, "F");
-                                doc.setFontSize(14);
                                 doc.setFont("helvetica", "bold");
-                                doc.setTextColor(33, 37, 51);
-                                doc.text("Summary", margin + 10, y + 17);
-                                y += 35;
+                                doc.setFontSize(20);
+                                doc.text("Clinical Summary & Transcript", pageWidth / 2, margin + 24, { align: "center" });
+                                doc.setLineWidth(0.5);
+                                doc.setDrawColor(200);
+                                doc.line(margin, margin + 34, pageWidth - margin, margin + 34);
+                                y = margin + 52;
+                              };
 
-                                const summaryLines = doc.splitTextToSize(t.summary, pageWidth - 2 * margin - 20);
-                                doc.setFillColor(245);
-                                doc.roundedRect(margin, y, pageWidth - 2 * margin, summaryLines.length * 18 + 10, 5, 5, "F");
-                                doc.setFontSize(12);
-                                doc.setFont("helvetica", "normal");
-                                doc.setTextColor(0, 0, 0);
-                                doc.text(summaryLines, margin + 10, y + 15);
-                                y += summaryLines.length * 18 + 25;
-                              }
+                              const renderSection = (title, text, headColor = [230,230,230], bodyColor = [245,245,245]) => {
+                                if (!text || !String(text).trim()) return;
+                                paginateIfNeeded(headerH + 8 + 40);
 
-                              // Transcript
-                              if (t.transcript) {
-                                doc.setFillColor(230, 245, 255);
-                                doc.roundedRect(margin, y, pageWidth - 2 * margin, 25, 5, 5, "F");
-                                doc.setFontSize(14);
+                                // header
+                                doc.setFillColor(...headColor);
+                                doc.roundedRect(margin, y, contentWidth, headerH, 5, 5, "F");
                                 doc.setFont("helvetica", "bold");
-                                doc.setTextColor(33, 37, 51);
-                                doc.text("Transcript", margin + 10, y + 17);
-                                y += 35;
+                                doc.setFontSize(13);
+                                doc.setTextColor(33,37,51);
+                                doc.text(title, margin + pad, y + headerH - 8);
+                                y += headerH + 8;
 
-                                const transcriptLines = doc.splitTextToSize(t.transcript, pageWidth - 2 * margin - 20);
-                                doc.setFillColor(245, 250, 255);
-                                doc.roundedRect(margin, y, pageWidth - 2 * margin, transcriptLines.length * 18 + 10, 5, 5, "F");
-                                doc.setFontSize(12);
+                                // body
+                                const s = String(text).trim();
                                 doc.setFont("helvetica", "normal");
-                                doc.setTextColor(0, 0, 0);
-                                doc.text(transcriptLines, margin + 10, y + 15);
-                                y += transcriptLines.length * 18 + 25;
-                              }
+                                doc.setFontSize(12);
+                                doc.setTextColor(0,0,0);
+                                doc.setLineHeightFactor(lineHeight);
+
+                                const wrapped = doc.splitTextToSize(s, contentWidth - pad*2);
+                                const lineH = (12 * lineHeight) / doc.internal.scaleFactor;
+                                const boxH = wrapped.length * lineH + pad * 2;
+
+                                paginateIfNeeded(boxH);
+                                doc.setFillColor(...bodyColor);
+                                doc.roundedRect(margin, y, contentWidth, boxH, 5, 5, "F");
+                                doc.text(wrapped, margin + pad, y + pad + 10);
+                                y += boxH + 14;
+                              };
+
+                              const renderTranscriptPage = (text) => {
+                                // force new page for transcript start
+                                doc.addPage();
+                                y = margin;
+
+                                // header
+                                doc.setFillColor(230,245,255);
+                                doc.roundedRect(margin, y, contentWidth, headerH, 5, 5, "F");
+                                doc.setFont("helvetica", "bold");
+                                doc.setFontSize(13);
+                                doc.setTextColor(33,37,51);
+                                doc.text("Transcript", margin + pad, y + headerH - 8);
+                                y += headerH + 8;
+
+                                // body streamed across pages
+                                const body = text && String(text).trim() ? String(text).trim() : "Transcript will appear here...";
+                                doc.setFont("helvetica", "normal");
+                                doc.setFontSize(12);
+                                doc.setTextColor(0,0,0);
+                                doc.setLineHeightFactor(lineHeight);
+
+                                const wrapped = doc.splitTextToSize(body, contentWidth - pad*2);
+                                const lineH = (12 * lineHeight) / doc.internal.scaleFactor;
+
+                                let start = 0;
+                                while (start < wrapped.length) {
+                                  const availableH = pageHeight - margin - y - pad * 2;
+                                  const fitLines = Math.max(1, Math.floor(availableH / lineH));
+                                  const slice = wrapped.slice(start, start + fitLines);
+                                  const sliceH = slice.length * lineH + pad * 2;
+
+                                  doc.setFillColor(245,250,255);
+                                  doc.roundedRect(margin, y, contentWidth, sliceH, 5, 5, "F");
+                                  doc.text(slice, margin + pad, y + pad + 10);
+
+                                  start += fitLines;
+                                  y += sliceH + 14;
+
+                                  if (start < wrapped.length) {
+                                    doc.addPage();
+                                    y = margin;
+                                    // continuation header
+                                    doc.setFillColor(230,245,255);
+                                    doc.roundedRect(margin, y, contentWidth, headerH, 5, 5, "F");
+                                    doc.setFont("helvetica", "bold");
+                                    doc.setFontSize(13);
+                                    doc.setTextColor(33,37,51);
+                                    doc.text("Transcript (cont.)", margin + pad, y + headerH - 8);
+                                    y += headerH + 8;
+                                    doc.setFont("helvetica", "normal");
+                                    doc.setFontSize(12);
+                                    doc.setTextColor(0,0,0);
+                                    doc.setLineHeightFactor(lineHeight);
+                                  }
+                                }
+                              };
+
+                              await renderTitle();
+
+                              // PAGE 1: Summary section only (if present)
+                              renderSection("Summary", t.summary, [230,230,230], [245,245,245]);
+
+                              // PAGE 2+: Transcript always starts on a new page
+                              renderTranscriptPage(t.transcript);
 
                               doc.save(`report_meeting_${selectedMeeting.id}.pdf`);
                             }}
@@ -359,6 +424,7 @@ export default function ReportPage({ user }) {
                           >
                             <img src="/images/downloads.png" alt="Save PDF" className="w-4 h-4 sm:w-5 sm:h-5" />
                           </button>
+
                         </div>
                       </div>
                     )}
