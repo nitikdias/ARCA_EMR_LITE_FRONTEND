@@ -220,22 +220,7 @@ useEffect(() => {
 
 
 
-  // Timer for recording duration
-  const startTimer = () => {
-    timerRef.current = setInterval(() => { setRecordingTime(prev => prev + 1); }, 1000);
-  };
-  const stopTimer = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-  };
-
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
+  
 
   // Poll transcript every 3 seconds
   const startTranscriptPolling = () => {
@@ -589,6 +574,75 @@ const renderSection = (key) => {
 };
 
 
+//generate summary function
+  const generateSummary = async () => {
+  if (!meetingId) {
+    toast.error("No active meeting. Start a new encounter first.");
+    return;
+  }
+
+  setIsGeneratingSummary(true);
+
+  try {
+    const response = await fetch("http://localhost:8000/generate_summary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        meeting_id: meetingId,  // ✅ use meetingId from context
+        transcript,
+        titles: {
+          hpi: sections.hpi.title,
+          physicalExam: sections.physicalExam.title,
+          investigations: sections.investigations.title,
+          prescription: sections.prescription.title,
+          assessment: sections.assessment.title
+        },
+        selected_language: selectedLanguage
+      }),
+    });
+
+    if (!response.ok) {
+      const errData = await response.json();
+      toast.error(errData.error || "Failed to generate summary.");
+      return;
+    }
+
+    const data = await response.json();
+    setSummary(data.summary || "");
+
+    // Optional: parse summary into sections
+    const parsed = parseMedicalSummary(data.summary || "", {
+      hpi: sections.hpi.title,
+      physicalExam: sections.physicalExam.title,
+      investigations: sections.investigations.title,
+      prescription: sections.prescription.title,
+      assessment: sections.assessment.title
+    });
+
+    if (parsed) {
+      const newSections = {};
+      Object.keys(parsed).forEach((key) => {
+        newSections[key] = {
+          title: sections[key]?.title || key,
+          content: parsed[key],
+          editingTitle: sections[key]?.editingTitle || false,
+          editingContent: sections[key]?.editingContent || false,
+        };
+      });
+      setSections(newSections);
+
+    }
+
+    toast.success("Summary generated successfully.");
+
+  } catch (error) {
+    console.error("Error generating summary:", error);
+    toast.error("Server error while generating summary.");
+  } finally {
+    setIsGeneratingSummary(false);
+  }
+};
+
 // Responsive audio visualizer animation
 function animateVisualizer() {
   const canvas = visualizerRef.current;
@@ -710,77 +764,22 @@ function CodePenWaveform({ paused }) {
   );
 }
 
-
-//generate summary function
-  const generateSummary = async () => {
-  if (!meetingId) {
-    toast.error("No active meeting. Start a new encounter first.");
-    return;
-  }
-
-  setIsGeneratingSummary(true);
-
-  try {
-    const response = await fetch("http://localhost:8000/generate_summary", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        meeting_id: meetingId,  // ✅ use meetingId from context
-        transcript,
-        titles: {
-          hpi: sections.hpi.title,
-          physicalExam: sections.physicalExam.title,
-          investigations: sections.investigations.title,
-          prescription: sections.prescription.title,
-          assessment: sections.assessment.title
-        },
-        selected_language: selectedLanguage
-      }),
-    });
-
-    if (!response.ok) {
-      const errData = await response.json();
-      toast.error(errData.error || "Failed to generate summary.");
-      return;
+// Timer for recording duration
+  const startTimer = () => {
+    timerRef.current = setInterval(() => { setRecordingTime(prev => prev + 1); }, 1000);
+  };
+  const stopTimer = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
     }
+  };
 
-    const data = await response.json();
-    setSummary(data.summary || "");
-
-    // Optional: parse summary into sections
-    const parsed = parseMedicalSummary(data.summary || "", {
-      hpi: sections.hpi.title,
-      physicalExam: sections.physicalExam.title,
-      investigations: sections.investigations.title,
-      prescription: sections.prescription.title,
-      assessment: sections.assessment.title
-    });
-
-    if (parsed) {
-      const newSections = {};
-      Object.keys(parsed).forEach((key) => {
-        newSections[key] = {
-          title: sections[key]?.title || key,
-          content: parsed[key],
-          editingTitle: sections[key]?.editingTitle || false,
-          editingContent: sections[key]?.editingContent || false,
-        };
-      });
-      setSections(newSections);
-
-    }
-
-    toast.success("Summary generated successfully.");
-
-  } catch (error) {
-    console.error("Error generating summary:", error);
-    toast.error("Server error while generating summary.");
-  } finally {
-    setIsGeneratingSummary(false);
-  }
-};
-
-
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   // Audio processing functions (keeping your existing audio logic)
   function onAudioProcess(e) {
@@ -866,7 +865,6 @@ function CodePenWaveform({ paused }) {
  // 1. Start Recording with new stream
 async function startRec(resetTimer = true) {
   // stop any running audio before starting fresh
-  
   if (audioCtxRef.current) {
     await audioCtxRef.current.close();
     audioCtxRef.current = null;
@@ -896,6 +894,9 @@ async function startRec(resetTimer = true) {
     setTranslation('');
     setSummary('');
     setRecordingTime(0);
+  } else {
+    // Resume: adjust startTimeRef to continue timing properly
+    startTimeRef.current = Date.now() - recordingTime * 1000;
   }
 
   setRecording(true);
@@ -910,6 +911,7 @@ async function startRec(resetTimer = true) {
     animateVisualizer();
   }
 }
+
 
 
 // 2. PAUSE: Stop everything but don't submit summary or reset state
@@ -932,11 +934,11 @@ async function pauseRec() {
   sourceRef.current = null;
 }
 
-// 3. RESUME: Start again (this sets up a new context/stream)
 async function resumeRec() {
   setPaused(false);
-  await startRec(true);  // Pass false to NOT reset recording time and state
+  await startRec(false);  // DO NOT reset buffers and state
 }
+
 
 
 // 4. Stop: Full cleanup + process summary
