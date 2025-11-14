@@ -8,28 +8,22 @@ export default function Header({ handleLogout }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [user, setUser] = useState(null);
 
-  // Fetch user on mount
+  // ✅ Read user info from localStorage on mount
   useEffect(() => {
-    async function fetchUser() {
-      try {
-        const res = await fetch("/api/me");
-        if (res.ok) {
-          const data = await res.json();
-          setUser(data.user);
-        } else {
-          console.error("Failed to fetch user");
-        }
-      } catch (err) {
-        console.error("Error fetching user:", err);
-      }
+    const storedUser = {
+      name: localStorage.getItem("userName"),
+      email: localStorage.getItem("userEmail"),
+    };
+
+    if (storedUser.name || storedUser.email) {
+      setUser(storedUser);
     }
-    fetchUser();
   }, []);
 
-  // Helper to get initials from email or name
+  // ✅ Helper to get initials from name or email
   const getInitials = () => {
     if (!user) return "DS";
-    if (user.name) {
+    if (user.name && user.name.trim()) {
       return user.name
         .split(" ")
         .map((n) => n[0])
@@ -51,7 +45,7 @@ export default function Header({ handleLogout }) {
         alignItems: 'center'
       }}
     >
-      {/* Left section - Logo only on mobile, full content on larger screens */}
+      {/* Left section */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         <div
           style={{
@@ -72,8 +66,7 @@ export default function Header({ handleLogout }) {
             />
           </span>
         </div>
-        
-        {/* Title and subtitle - Hidden on mobile, visible on md and up */}
+
         <div className="hidden md:block">
           <h1 style={{ fontSize: '18px', fontWeight: '600', margin: 0, color: '#ffffffff' }}>
             ARCA EMR Lite
@@ -82,11 +75,10 @@ export default function Header({ handleLogout }) {
         </div>
       </div>
 
-      {/* Right section - Different layouts for mobile vs desktop */}
+      {/* Right section */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-        {/* Desktop view - Avatar and email dropdown */}
+        {/* Desktop view */}
         <div className="hidden md:flex" style={{ alignItems: 'center', gap: '16px' }}>
-          {/* Account Avatar */}
           <div
             style={{
               width: '32px',
@@ -103,7 +95,7 @@ export default function Header({ handleLogout }) {
             </span>
           </div>
 
-          {/* User dropdown */}
+          {/* Dropdown */}
           <div style={{ position: "relative" }}>
             <div
               style={{ cursor: "pointer", fontSize: "14px", fontWeight: 500, color: "#fefefeff" }}
@@ -147,7 +139,7 @@ export default function Header({ handleLogout }) {
           </div>
         </div>
 
-        {/* Mobile menu icon - Only visible on mobile */}
+        {/* Mobile menu */}
         <div className="md:hidden" style={{ position: "relative" }}>
           <div
             onClick={() => setDropdownOpen(!dropdownOpen)}

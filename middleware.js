@@ -1,53 +1,72 @@
 import { NextResponse } from "next/server";
-import { jwtVerify } from "jose";
-
-const SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "supersecret");
-
-async function verifyJWT(token) {
-  try {
-    await jwtVerify(token, SECRET);
-    return true;
-  } catch (err) {
-    console.log("JWT verification failed:", err.message);
-    return false;
-  }
-}
 
 export async function middleware(req) {
   const { pathname } = req.nextUrl;
-  const token = req.cookies.get("token")?.value;
 
-  // Protect `/`
+  // Only protect authenticated routes
   const protectedPaths = ["/", "/newEncounter", "/registerUser", "/reports", "/sectionEditor", "/sidebar"];
+  const isProtected = protectedPaths.some(path => pathname === path || pathname.startsWith(path + "/"));
 
-  if (protectedPaths.includes(pathname)) {
-    if (!token || !(await verifyJWT(token))) {
-      return NextResponse.redirect(new URL("/login", req.url));
+  if (!isProtected) return NextResponse.next();
+
+  // ✅ Read session_id cookie (await not needed in middleware - req.cookies is synchronous)
+  const sessionId = req.cookies.get("session_id")?.value;
+
+  if (!sessionId) {
+    // Only redirect if we're not already on the login page
+    if (pathname === "/login") {
+      return NextResponse.next();
     }
+    
+    console.warn("❌ No session_id cookie, redirecting to /login");
+    return NextResponse.redirect(new URL("/login", req.url));
   }
 
+  try {
+    // ✅ Verify session with Flask backend
+    const res = await fetch("http://localhost:8000/verify-session", {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json", 
+        "X-API-Key": "n1i2t3i4k5d6i7a8s" 
+      },
+      body: JSON.stringify({ session_id: sessionId }),
+    });
 
-  // Prevent logged-in users from accessing Login/Register
-  if (pathname.startsWith("/login") || pathname.startsWith("/register")) {
-    if (token && (await verifyJWT(token))) {
-      return NextResponse.redirect(new URL("/", req.url));
+    if (!res.ok) {
+      console.warn("❌ Session verification failed, redirecting to /login");
+      
+      // Clear the invalid cookie
+      const response = NextResponse.redirect(new URL("/login", req.url));
+      response.cookies.delete("session_id");
+      return response;
     }
-  }
 
-  return NextResponse.next();
+    const data = await res.json();
+    if (!data.valid) {
+      console.warn("⚠️ Invalid session, redirecting to /login");
+      
+      const response = NextResponse.redirect(new URL("/login", req.url));
+      response.cookies.delete("session_id");
+      return response;
+    }
+
+    console.log("✅ Valid session for user:", data.user_id);
+    return NextResponse.next();
+
+  } catch (err) {
+    console.error("💥 Middleware verification error:", err);
+    return NextResponse.redirect(new URL("/login", req.url));
+  }
 }
 
 export const config = {
   matcher: [
     "/",
-    "/login",
-    "/register",
-    "/admin/:path*",
-    "/api/:path*",
-    "/newEncounter",
-    "/registerUser",
-    "/reports",
-    "/sectionEditor",
-    "/sidebar"
+    "/newEncounter/:path*",
+    "/registerUser/:path*",
+    "/reports/:path*",
+    "/sectionEditor/:path*",
+    "/sidebar/:path*"
   ],
 };

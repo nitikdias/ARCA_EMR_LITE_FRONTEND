@@ -7,6 +7,7 @@ import Header from "../header/page";
 import jsPDF from "jspdf";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { useUser } from "@/context/userContext";
 
 export default function ReportPage({ user }) {
   const router = useRouter();
@@ -19,10 +20,50 @@ export default function ReportPage({ user }) {
   const [editingTranscriptId, setEditingTranscriptId] = useState(null);
   const [editData, setEditData] = useState({});
 
+
   const handleLogout = async () => {
-    await fetch("/api/logout", { method: "POST" });
-    router.push("/login");
+    try {
+      console.log("🚪 Starting logout...");
+
+      // ✅ Call Next.js API route (which forwards to Flask)
+      const res = await fetch("/api/logout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (res.ok) {
+        console.log("✅ Logout successful");
+        
+        // ✅ Clear all localStorage
+        localStorage.clear();
+        console.log("✅ Cleared localStorage");
+        
+        // ✅ Browser will automatically clear the session_id cookie
+        // (Next.js set max_age=0 in response)
+        
+        console.log("🔄 Redirecting to login...");
+        
+        // ✅ Redirect to login
+        router.push("/login");
+        
+        // ✅ Optional: Force full page reload after a short delay
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 100);
+      } else {
+        const errorData = await res.json();
+        console.error("❌ Logout failed:", errorData.error);
+        alert("Logout failed. Please try again.");
+      }
+    } catch (err) {
+      console.error("💥 Error during logout:", err);
+      alert("An error occurred during logout.");
+    }
   };
+
+  const API_KEY = "n1i2t3i4k5d6i7a8s";
 
   // Fetch meetings
   useEffect(() => {
@@ -31,7 +72,12 @@ export default function ReportPage({ user }) {
       if (!userId) return;
 
       try {
-        const res = await fetch(`http://localhost:8000/meetings?user_id=${userId}`);
+        const res = await fetch(`http://localhost:8000/meetings?user_id=${userId}`,{
+          headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": API_KEY,
+        },
+        });
         if (!res.ok) throw new Error("Failed to fetch meetings");
         const data = await res.json();
         setMeetings(data);
@@ -53,7 +99,12 @@ export default function ReportPage({ user }) {
       if (!userId) return;
 
       try {
-        const res = await fetch(`http://localhost:8000/stats?user_id=${userId}`);
+        const res = await fetch(`http://localhost:8000/stats?user_id=${userId}`,{
+          headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": API_KEY,
+        },
+        });
         if (res.ok) {
           const data = await res.json();
           setStats(data);
@@ -148,9 +199,6 @@ export default function ReportPage({ user }) {
                 <div className="flex-1">
                   <h3 className="font-semibold text-sm sm:text-base">
                     Patient: {meeting.patient?.name || "Unknown"}{" "}
-                    <span className="text-gray-500 text-xs sm:text-sm block sm:inline mt-1 sm:mt-0">
-                      (Meeting ID: {meeting.id})
-                    </span>
                   </h3>
                   <p className="text-xs sm:text-sm text-gray-700 mt-1">
                     <strong>Created At:</strong>{" "}

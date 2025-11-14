@@ -1,8 +1,10 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { MeetingProvider } from "@/context/meetingContext";
-import { UserProvider } from "@/context/userContext";
+import { UserProvider } from '@/context/userContext';
+import { MeetingProvider } from '@/context/meetingContext';
 import { RecordingProvider } from "@/context/recordingContext";
+import ClientLayout from "./ClientLayout";
+import TokenRefreshManager from "./components/TokenRefreshManager";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,7 +27,12 @@ export default function RootLayout({ children }) {
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <RecordingProvider>
         <UserProvider>
-          <MeetingProvider>{children}</MeetingProvider>
+          <MeetingProvider>
+            <ClientLayout>
+              <TokenRefreshManager/> {children}
+             
+              </ClientLayout>
+            </MeetingProvider>
         </UserProvider>
         </RecordingProvider>
       </body>

@@ -6,41 +6,73 @@ import { useRouter } from "next/navigation";
 export default function Login() {
   const router = useRouter();
   const [isSignup, setIsSignup] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+
     const formData = new FormData(e.target);
     const email = formData.get("email");
     const password = formData.get("password");
+    const name = formData.get("name");
+    const phone = formData.get("phone");
 
-    const endpoint = isSignup ? "/api/signup" : "/api/login";
+    const endpoint = isSignup
+      ? "http://localhost:8000/registerUser"
+      : "http://localhost:8000/login";
+
+    console.log("📤 Submitting to:", endpoint);
 
     try {
+      const body = isSignup
+        ? JSON.stringify({ email, password, name, phone })
+        : JSON.stringify({ email, password });
+
       const res = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": "n1i2t3i4k5d6i7a8s",
+        },
+        credentials: "include", // ✅ Important for cookies
+        body,
       });
 
       const data = await res.json();
-      if (data.success) {
-        localStorage.setItem("userId", data.userId);
-        if (data.redirect) {
-          router.push(data.redirect);
+
+      if (res.ok) {
+        if (isSignup) {
+          alert("✅ Registration successful! Please login.");
+          setIsSignup(false);
         } else {
-          router.push("/");
-        }
+        console.log("✅ Login successful, storing user data...");
+
+        // ✅ Store only user info in localStorage
+        localStorage.setItem("userId", data.user.id);
+        localStorage.setItem("userName", data.user.name);
+        localStorage.setItem("userEmail", data.user.email);
+        localStorage.setItem("userPhone", data.user.phone || "");
+
+        console.log("🚀 Redirecting to home page...");
+        
+        // ✅ Use full page reload instead of router.push
+        window.location.href = "/";
+      }
+
       } else {
-        alert(data.message || "Something went wrong");
+        alert(data.error || data.message || "Something went wrong");
       }
     } catch (err) {
+      console.error("❌ Error:", err);
       alert("Server error. Please try again later.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="flex flex-col lg:flex-row min-h-screen">
-      {/* Left Side (Image Section) - Hidden on mobile, visible on larger screens */}
       <div className="hidden lg:flex lg:w-2/5 xl:w-1/2 items-center justify-center p-4 lg:p-8 relative overflow-hidden">
         <img
           src="images/auth-image.png"
@@ -56,22 +88,16 @@ export default function Login() {
         </div>
       </div>
 
-      {/* Right Side (Form Section) with Mobile Background */}
       <div className="flex-1 flex items-center justify-center relative px-4 py-8 sm:px-6 lg:px-8 lg:bg-white">
-        {/* Background Image for Mobile - Only visible on small screens */}
         <div className="lg:hidden absolute inset-0 z-0">
           <img
             src="images/auth-image.png"
             alt="Background"
             className="w-full h-full object-cover"
           />
-          {/* Dark overlay for better readability */}
-          <div className="absolute inset-0 "></div>
         </div>
 
-        {/* Form Container */}
         <div className="w-full max-w-md space-y-6 relative z-10">
-          {/* Logo for mobile - only visible on small screens */}
           <div className="lg:hidden flex justify-center mb-6">
             <img
               src="images/auth-logo.png"
@@ -80,7 +106,6 @@ export default function Login() {
             />
           </div>
 
-          {/* Form Card */}
           <div className="bg-white/95 lg:bg-white backdrop-blur-sm rounded-xl shadow-lg p-6 sm:p-8 md:p-10 border border-gray-100">
             <h2
               className="text-2xl sm:text-3xl font-semibold text-gray-800 mb-6 sm:mb-8 text-center"
@@ -90,6 +115,43 @@ export default function Login() {
             </h2>
 
             <form className="space-y-5" onSubmit={handleSubmit}>
+              {isSignup && (
+                <>
+                  <div>
+                    <label
+                      htmlFor="name"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      Full Name
+                    </label>
+                    <input
+                      id="name"
+                      name="name"
+                      type="text"
+                      placeholder="Enter your full name"
+                      className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="phone"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      Phone Number
+                    </label>
+                    <input
+                      id="phone"
+                      name="phone"
+                      type="tel"
+                      placeholder="Enter your phone number"
+                      className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                </>
+              )}
+
               <div>
                 <label
                   htmlFor="email"
@@ -102,7 +164,7 @@ export default function Login() {
                   name="email"
                   type="email"
                   placeholder="Enter your email"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 sm:py-3.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black text-base transition-all duration-200"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
               </div>
@@ -119,37 +181,44 @@ export default function Login() {
                   name="password"
                   type="password"
                   placeholder="Enter your password"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 sm:py-3.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black text-base transition-all duration-200"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full py-3 sm:py-3.5 rounded-lg font-semibold text-base sm:text-lg hover:opacity-90 transition-all duration-200 active:scale-98 shadow-md"
+                disabled={loading}
+                className="w-full py-3 rounded-lg font-semibold text-lg hover:opacity-90 transition-all duration-200 shadow-md disabled:opacity-50"
                 style={{
                   backgroundColor: "oklch(0.3 0.06 253.77)",
                   color: "white",
                 }}
               >
-                {isSignup ? "Sign Up" : "Login"}
+                {loading
+                  ? isSignup
+                    ? "Signing up..."
+                    : "Logging in..."
+                  : isSignup
+                  ? "Sign Up"
+                  : "Login"}
               </button>
             </form>
 
             <div className="mt-6 text-center">
-              <p className="text-sm sm:text-base text-gray-600">
+              <p className="text-sm text-gray-600">
                 {isSignup ? "Already have an account? " : "New here? "}
                 <button
                   type="button"
-                  className="font-medium text-blue-600 hover:text-blue-700 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded px-1"
+                  className="font-medium text-blue-600 hover:underline"
                   onClick={() => setIsSignup(!isSignup)}
+                  disabled={loading}
                 >
                   {isSignup ? "Sign in" : "Create an account"}
                 </button>
               </p>
             </div>
           </div>
-
         </div>
       </div>
     </div>

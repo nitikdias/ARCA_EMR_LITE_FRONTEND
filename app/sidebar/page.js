@@ -22,6 +22,7 @@ export default function Sidebar({ stats }) {
     transition: "all 0.2s ease",
   });
 
+
   // Close sidebar when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
