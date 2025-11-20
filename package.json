@@ -8,7 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
-    "@prisma/client": "^6.17.1",
+    
     "bcryptjs": "^3.0.2",
     "firebase": "^12.4.0",
     "firebase-admin": "^13.5.0",
@@ -29,7 +29,6 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "prisma": "^6.17.1",
     "tailwindcss": "^4"
   }
 }

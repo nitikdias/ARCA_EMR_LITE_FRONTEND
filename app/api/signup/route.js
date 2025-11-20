@@ -1,36 +1,33 @@
 export const runtime = "nodejs";
 
-
-import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { NextResponse } from "next/server";
 
-const prisma = new PrismaClient();
 const SECRET = process.env.JWT_SECRET || "supersecret";
+const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const API_KEY = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY || "";
 
+// Proxy signup to backend register endpoint
 export async function POST(req) {
-  const { email, password } = await req.json();
+  const body = await req.json();
 
-  const existingUser = await prisma.user.findUnique({ where: { email } });
-  if (existingUser) {
-    return NextResponse.json({ success: false, message: "User already exists" }, { status: 400 });
+  try {
+    const res = await fetch(`${API_BASE_URL}/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-API-Key": API_KEY },
+      body: JSON.stringify(body),
+    });
+
+    const data = await res.json();
+    if (!res.ok) return NextResponse.json(data, { status: res.status });
+
+    const nextRes = NextResponse.json(data);
+    const token = data.token || (data.userId ? jwt.sign({ id: data.userId }, SECRET, { expiresIn: "1h" }) : null);
+    if (token) nextRes.cookies.set("token", token, { httpOnly: true, path: "/" });
+
+    return nextRes;
+  } catch (err) {
+    console.error("Signup proxy error:", err);
+    return NextResponse.json({ success: false, message: "Signup failed" }, { status: 500 });
   }
-
-  const hashedPassword = await bcrypt.hash(password, 10);
-  const user = await prisma.user.create({
-    data: { email, password: hashedPassword },
-  });
-
-  const token = jwt.sign({ id: user.id }, SECRET, { expiresIn: "1h" });
-
-  const res = NextResponse.json({
-    success: true,
-    message: "Signup successful",
-    userId: user.id,
-  });
-
-  res.cookies.set("token", token, { httpOnly: true, path: "/" });
-
-  return res;
 }

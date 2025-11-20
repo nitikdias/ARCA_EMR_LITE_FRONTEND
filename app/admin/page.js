@@ -1,13 +1,24 @@
 import Link from "next/link";
-import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient();
+const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const API_KEY = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY || "";
 
 export default async function AdminDashboard() {
-  const userCount = await prisma.user.count();
-  const meetingCount = await prisma.meeting.count();
-  const transcriptCount = await prisma.transcript.count();
+  let userCount = 0;
+  let meetingCount = 0;
+  let transcriptCount = 0;
 
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/metrics`, { headers: { "X-API-Key": API_KEY } });
+    if (res.ok) {
+      const metrics = await res.json();
+      userCount = metrics.users || 0;
+      meetingCount = metrics.meetings || 0;
+      transcriptCount = metrics.transcripts || 0;
+    }
+  } catch (err) {
+    console.warn("Failed to fetch admin metrics, falling back to zeros:", err);
+  }
 
   return (
     <div className="p-8">

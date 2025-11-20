@@ -1,25 +1,25 @@
-import { PrismaClient } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
-const prisma = new PrismaClient();
+const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const API_KEY = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY || "";
 
 export default async function TranscriptsPage() {
-  const transcripts = await prisma.transcript.findMany({
-    include: {
-      meeting: {
-        include: { user: true, patient: true },
-      },
-    },
-  });
+  let transcripts = [];
+  try {
+    const res = await fetch(`${API_BASE_URL}/transcripts`, { headers: { "X-API-Key": API_KEY } });
+    if (res.ok) transcripts = await res.json();
+  } catch (err) {
+    console.warn("Failed to fetch transcripts from backend:", err);
+    transcripts = [];
+  }
 
-  // Server action to delete a transcript
   async function deleteTranscript(formData) {
     "use server";
     const id = Number(formData.get("id"));
     if (!id) return;
 
     try {
-      await prisma.transcript.delete({ where: { id } });
+      await fetch(`${API_BASE_URL}/transcripts/${id}`, { method: "DELETE", headers: { "X-API-Key": API_KEY } });
     } catch (error) {
       console.error("Error deleting transcript:", error);
     }
@@ -39,7 +39,6 @@ export default async function TranscriptsPage() {
             <th className="border p-2 text-black">Patient</th>
             <th className="border p-2 text-black">Transcript</th>
             <th className="border p-2 text-black">Summary</th>
-        
             <th className="border p-2 text-black">Action</th>
           </tr>
         </thead>
@@ -47,12 +46,11 @@ export default async function TranscriptsPage() {
           {transcripts.map((t) => (
             <tr key={t.id} className="hover:bg-gray-50">
               <td className="border p-2 text-black">{t.id}</td>
-              <td className="border p-2 text-black">{t.meeting.name}</td>
-              <td className="border p-2 text-black">{t.meeting.user.email}</td>
-              <td className="border p-2 text-black">{t.meeting.patient?.name || "N/A"}</td>
+              <td className="border p-2 text-black">{t.meeting?.name || "-"}</td>
+              <td className="border p-2 text-black">{t.meeting?.user?.email || "-"}</td>
+              <td className="border p-2 text-black">{t.meeting?.patient?.name || "N/A"}</td>
               <td className="border p-2 text-black">{t.transcript}</td>
               <td className="border p-2 text-black">{t.summary || "-"}</td>
-        
               <td className="border p-2 text-black">
                 <form action={deleteTranscript}>
                   <input type="hidden" name="id" value={t.id} />

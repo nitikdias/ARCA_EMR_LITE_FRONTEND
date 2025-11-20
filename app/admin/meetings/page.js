@@ -1,25 +1,27 @@
-import { PrismaClient } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
-const prisma = new PrismaClient();
+const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const API_KEY = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY || "";
 
 export default async function MeetingsPage() {
-  const meetings = await prisma.meeting.findMany({
-    include: {
-      user: true,
-      patient: true,
-      transcripts: true,
-    },
-  });
+  // Fetch meetings from backend; fallback to empty array
+  let meetings = [];
+  try {
+    const res = await fetch(`${API_BASE_URL}/meetings`, { headers: { "X-API-Key": API_KEY } });
+    if (res.ok) meetings = await res.json();
+  } catch (err) {
+    console.warn("Failed to fetch meetings from backend:", err);
+    meetings = [];
+  }
 
-  // Server action to delete a meeting
+  // Server action to delete a meeting (calls backend)
   async function deleteMeeting(formData) {
     "use server";
     const id = Number(formData.get("id"));
     if (!id) return;
 
     try {
-      await prisma.meeting.delete({ where: { id } });
+      await fetch(`${API_BASE_URL}/meetings/${id}`, { method: "DELETE", headers: { "X-API-Key": API_KEY } });
     } catch (error) {
       console.error("Error deleting meeting:", error);
     }
@@ -47,9 +49,9 @@ export default async function MeetingsPage() {
             <tr key={m.id} className="hover:bg-gray-50 text-black">
               <td className="border p-2">{m.id}</td>
               <td className="border p-2">{m.name}</td>
-              <td className="border p-2">{m.user.email}</td>
+              <td className="border p-2">{m.user?.email || "N/A"}</td>
               <td className="border p-2">{m.patient?.name || "N/A"}</td>
-              <td className="border p-2">{m.transcripts.length}</td>
+              <td className="border p-2">{(m.transcripts || []).length}</td>
               <td className="border p-2">
                 <form action={deleteMeeting}>
                   <input type="hidden" name="id" value={m.id} />

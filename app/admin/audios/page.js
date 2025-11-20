@@ -1,12 +1,17 @@
-import { PrismaClient } from "@prisma/client";
 import { Buffer } from "buffer";
 
-const prisma = new PrismaClient();
+const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const API_KEY = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY || "";
 
 export default async function AudiosPage() {
-  const audios = await prisma.audioSample.findMany({
-    include: { user: true },
-  });
+  let audios = [];
+  try {
+    const res = await fetch(`${API_BASE_URL}/audios`, { headers: { "X-API-Key": API_KEY } });
+    if (res.ok) audios = await res.json();
+  } catch (err) {
+    console.warn("Failed to fetch audios from backend:", err);
+    audios = [];
+  }
 
   return (
     <div className="p-8">
@@ -23,11 +28,11 @@ export default async function AudiosPage() {
         </thead>
         <tbody>
           {audios.map((a) => {
-            const base64Audio = Buffer.from(a.data).toString("base64");
+            const base64Audio = Buffer.from(a.data || "").toString("base64");
             return (
               <tr key={a.id} className="hover:bg-gray-50">
                 <td className="border p-2">{a.id}</td>
-                <td className="border p-2">{a.user.email}</td>
+                <td className="border p-2">{a.user?.email || "-"}</td>
                 <td className="border p-2">{a.filename}</td>
                 <td className="border p-2">
                   <audio controls src={`data:audio/wav;base64,${base64Audio}`} />

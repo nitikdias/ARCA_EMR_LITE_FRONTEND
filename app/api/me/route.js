@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
 import jwt from "jsonwebtoken";
 
-const prisma = new PrismaClient();
 const SECRET = process.env.JWT_SECRET || "supersecret";
+const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const API_KEY = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY || "";
 
 export async function GET(req) {
   const token = req.cookies.get("token")?.value;
@@ -11,14 +11,22 @@ export async function GET(req) {
 
   try {
     const payload = jwt.verify(token, SECRET);
-    const user = await prisma.user.findUnique({
-      where: { id: payload.id },
-    });
 
-    return NextResponse.json({
-      user: user ? { id: user.id, name: user.name, email: user.email } : null,
-    });
-  } catch {
+    // Try to fetch user info from backend; fallback to minimal user object
+    try {
+      const res = await fetch(`${API_BASE_URL}/users/${payload.id}`, {
+        headers: { "X-API-Key": API_KEY },
+      });
+      if (res.ok) {
+        const user = await res.json();
+        return NextResponse.json({ user });
+      }
+    } catch (err) {
+      console.warn("Failed to fetch user from backend, returning minimal payload:", err);
+    }
+
+    return NextResponse.json({ user: { id: payload.id } });
+  } catch (err) {
     return NextResponse.json({ user: null });
   }
 }
