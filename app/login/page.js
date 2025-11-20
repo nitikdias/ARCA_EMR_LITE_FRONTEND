@@ -7,6 +7,8 @@ export default function Login() {
   const router = useRouter();
   const [isSignup, setIsSignup] = useState(false);
   const [loading, setLoading] = useState(false);
+  const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,8 +21,8 @@ export default function Login() {
     const phone = formData.get("phone");
 
     const endpoint = isSignup
-      ? "http://localhost:8000/registerUser"
-      : "http://localhost:8000/login";
+      ? `${API_BASE_URL}/registerUser`
+      : `${API_BASE_URL}/login`;
 
     console.log("📤 Submitting to:", endpoint);
 
@@ -33,7 +35,7 @@ export default function Login() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-API-Key": "n1i2t3i4k5d6i7a8s",
+          "X-API-Key": API_KEY,
         },
         credentials: "include", // ✅ Important for cookies
         body,
@@ -57,7 +59,7 @@ export default function Login() {
         console.log("🚀 Redirecting to home page...");
         
         // ✅ Use full page reload instead of router.push
-        window.location.href = "/";
+        window.location.href = "/newEncounter";
       }
 
       } else {

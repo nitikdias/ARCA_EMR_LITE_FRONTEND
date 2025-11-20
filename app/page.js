@@ -13,7 +13,8 @@ import Header from './header/page';
 import RecordingPanel from './dashboard/components/RecordingPanel';
 import ClinicalSummary from './dashboard/components/ClinicalSummary';
 
-const API_KEY = "n1i2t3i4k5d6i7a8s";
+const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
 export default function App() {
   const { meetingId } = useMeeting();
@@ -27,12 +28,62 @@ export default function App() {
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [readyForSummary, setReadyForSummary] = useState(false);
   const [sections, setSections] = useState({
-    hpi: { title: "History of presenting complaints", content: "", editingTitle: false, editingContent: false },
-    physicalExam: { title: "Physical Examination", content: "", editingTitle: false, editingContent: false },
-    investigations: { title: "Investigations", content: "", editingTitle: false, editingContent: false },
-    prescription: { title: "Prescription and Initial Management", content: "", editingTitle: false, editingContent: false },
-    assessment: { title: "Assessment and Plan", content: "", editingTitle: false, editingContent: false }
+    hpi: { 
+      title: "History of presenting complaints", 
+      content: "", 
+      editingTitle: false, 
+      editingContent: false 
+    },
+    pmh: { 
+      title: "Past Medical/Surgical History", 
+      content: "", 
+      editingTitle: false, 
+      editingContent: false 
+    },
+    familyHistory: { 
+      title: "Family History", 
+      content: "", 
+      editingTitle: false, 
+      editingContent: false 
+    },
+    lifestyle: { 
+      title: "Lifestyle History", 
+      content: "", 
+      editingTitle: false, 
+      editingContent: false 
+    },
+    physicalExam: { 
+      title: "Physical Examination", 
+      content: "", 
+      editingTitle: false, 
+      editingContent: false 
+    },
+    investigations: { 
+      title: "Investigation Summary", 
+      content: "", 
+      editingTitle: false, 
+      editingContent: false 
+    },
+    assessment: { 
+      title: "Assessment and Discussion", 
+      content: "", 
+      editingTitle: false, 
+      editingContent: false 
+    },
+    management: { 
+      title: "Management Plan", 
+      content: "", 
+      editingTitle: false, 
+      editingContent: false 
+    },
+    prescription: { 
+      title: "Prescription", 
+      content: "", 
+      editingTitle: false, 
+      editingContent: false 
+    },
   });
+
 
   const {
     mics, deviceId, setDeviceId, recording, paused, recordingTime,
@@ -41,12 +92,78 @@ export default function App() {
 
   const transcriptPollingRef = useRef(null);
 
+  // ✅ Call clear endpoint when new encounter starts
+useEffect(() => {
+  console.log("Meeting ID changed:", meetingId);
+  
+  if (meetingId && user) {
+    console.log("🆕 New encounter started - clearing all data");
+    
+    // ✅ Clear backend transcript
+    clearBackendTranscript();
+    
+    // Clear frontend transcript
+    setTranscript("");
+    
+    // Clear content but keep custom titles
+    setSections((prevSections) => {
+      const clearedSections = {};
+      Object.keys(prevSections).forEach((key) => {
+        clearedSections[key] = {
+          title: prevSections[key].title,
+          content: "",
+          editingTitle: false,
+          editingContent: false,
+        };
+      });
+      return clearedSections;
+    });
+    
+    // Reset other states
+    setSummary("");
+    setReadyForSummary(false);
+    
+    toast.info("New encounter started - ready for recording");
+  }
+}, [meetingId, user]);
+
+// ✅ Add function to clear backend transcript
+const clearBackendTranscript = async () => {
+  if (!user?.id) {
+    console.warn("Cannot clear transcript: No user ID");
+    return;
+  }
+  
+  try {
+    const formData = new FormData();
+    formData.append("user_id", user.id);
+    
+    const response = await fetch(`${API_BASE_URL}/clear_transcript`, {
+      method: "POST",
+      headers: {
+        "X-API-Key": API_KEY,
+      },
+      body: formData,
+    });
+    
+    if (response.ok) {
+      console.log("✅ Backend transcript cleared successfully");
+    } else {
+      const errorText = await response.text();
+      console.error("❌ Failed to clear backend transcript:", errorText);
+    }
+  } catch (error) {
+    console.error("Error clearing backend transcript:", error);
+  }
+};
+
+
   // --- Fetch Stats ---
   useEffect(() => {
     if (!user) return; 
     async function fetchStats() {
       try {
-        const res = await fetch(`http://localhost:8000/stats?user_id=${user.id}`, { headers: { "X-API-Key": API_KEY } });
+        const res = await fetch(`${API_BASE_URL}/stats?user_id=${user.id}`, { headers: { "X-API-Key": API_KEY } });
         if (res.ok) setStats(await res.json());
       } catch (err) { console.error("Failed to fetch stats:", err); }
     }
@@ -60,7 +177,7 @@ export default function App() {
       const formData = new FormData();
       formData.append("user_id", user.id);
       try {
-        const res = await fetch("http://localhost:8000/get_transcript", { method: "POST", body: formData, headers: { "X-API-Key": API_KEY } });
+        const res = await fetch(`${API_BASE_URL}/get_transcript`, { method: "POST", body: formData, headers: { "X-API-Key": API_KEY } });
         if (res.ok) {
           const data = await res.json();
           setTranscript(data.transcript || '');
@@ -91,7 +208,7 @@ export default function App() {
     const lang = e.target.value;
     setSelectedLanguage(lang);
     try {
-      await fetch("http://localhost:8000/select_language", {
+      await fetch(`${API_BASE_URL}/select_language`, {
         method: "POST", headers: { "Content-Type": "application/json", "X-API-Key": API_KEY },
         body: JSON.stringify({ language_code: lang })
       });
@@ -109,17 +226,25 @@ export default function App() {
       return;
     }
     try {
-      await fetch("http://localhost:8000/update_transcript_section", {
+      await fetch(`${API_BASE_URL}/update_transcript_section`, {
         method: "POST", headers: { "Content-Type": "application/json", "X-API-Key": API_KEY },
         body: JSON.stringify({ meeting_id: meetingId, user_id: user.id, section_key: sectionKey, content, titles })
       });
     } catch (err) { console.error("Error saving section:", err); }
   };
 
-  // --- Generate Summary ---
+// --- Generate Summary ---
   const generateSummary = async () => {
     if (!meetingId) {
       toast.error("No active meeting.");
+      return;
+    }
+
+    // Validate meeting_id is a valid integer
+    const parsedMeetingId = parseInt(meetingId, 10);
+    if (isNaN(parsedMeetingId) || parsedMeetingId < 1) {
+      toast.error("Invalid meeting ID.");
+      console.error("Invalid meetingId:", meetingId, "Type:", typeof meetingId);
       return;
     }
 
@@ -132,19 +257,28 @@ export default function App() {
     setIsGeneratingSummary(true);
 
     try {
-      const res = await fetch("http://localhost:8000/generate_summary", {
+      // Prepare sections payload (send only titles as dict)
+      const sectionsPayload = Object.fromEntries(
+        Object.entries(sections).map(([k, v]) => [k, v.title])
+      );
+
+      const payload = {
+        meeting_id: parsedMeetingId,  // Use validated integer
+        user_id: String(userId),
+        transcript: transcript || "",
+        sections: sectionsPayload,
+        selected_language: selectedLanguage || "en",
+      };
+
+      console.log("Sending payload:", payload);
+
+      const res = await fetch(`${API_BASE_URL}/generate_summary`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "X-API-Key": API_KEY,
         },
-        body: JSON.stringify({
-          meeting_id: meetingId,
-          user_id: userId,
-          transcript,
-          titles: Object.fromEntries(Object.entries(sections).map(([k, v]) => [k, v.title])),
-          selected_language: selectedLanguage,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -157,41 +291,30 @@ export default function App() {
       const data = await res.json();
       console.log("Summary API response:", data);
 
-      if (!data || !data.summary) {
-        toast.error("No summary returned.");
+      // Backend now returns 'sections' dict
+      if (!data || !data.sections) {
+        toast.error("No sections returned.");
         return;
       }
 
-      // --- If summary is structured (object)
-      if (typeof data.summary === "object" && !Array.isArray(data.summary)) {
-        const updatedSections = { ...sections };
-        Object.keys(updatedSections).forEach((key) => {
-          if (data.summary[key]) {
-            updatedSections[key].content = data.summary[key] || "";
-          }
-        });
-        setSections(updatedSections);
-        toast.success("Summary loaded into sections!");
-
-        // Optional: auto-save
-        for (const key in updatedSections) {
-          if (updatedSections[key].content.trim()) {
-            await saveSectionToDB(key, updatedSections[key].content);
-          }
+      // Update sections with generated content
+      const updatedSections = { ...sections };
+      Object.keys(updatedSections).forEach((key) => {
+        if (data.sections[key]) {
+          updatedSections[key].content = data.sections[key] || "";
         }
-      } 
-      // --- If summary is plain text
-      else if (typeof data.summary === "string") {
-        setSections((prev) => ({
-          ...prev,
-          assessment: { ...prev.assessment, content: data.summary || "" }
-        }));
-        setSummary(data.summary);
-        toast.success("Summary generated (text only).");
-      } 
-      else {
-        toast.warn("Unrecognized summary format.");
+      });
+
+      setSections(updatedSections);
+      toast.success("Summary loaded into sections!");
+
+      // Auto-save to database
+      for (const key in updatedSections) {
+        if (updatedSections[key].content.trim()) {
+          await saveSectionToDB(key, updatedSections[key].content);
+        }
       }
+
     } catch (error) {
       console.error("Error generating summary:", error);
       toast.error("Server error generating summary.");
@@ -199,6 +322,7 @@ export default function App() {
       setIsGeneratingSummary(false);
     }
   };
+
 
   // --- Logout ---
  const handleLogout = async () => {

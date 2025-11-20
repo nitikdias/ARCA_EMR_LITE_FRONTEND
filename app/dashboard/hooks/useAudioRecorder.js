@@ -1,13 +1,16 @@
 "use client";
 import { useState, useRef, useEffect } from 'react';
-import { useUser } from '@/context/userContext'; // Import the user context hook
+import { useUser } from '@/context/userContext';
 
-const API_KEY = "n1i2t3i4k5d6i7a8s";
+
+const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 const sampleRate = 48000;
 const recordSec = 6;
 const stepSec = 5;
 const recordLen = sampleRate * recordSec;
 const stepLen = sampleRate * stepSec;
+
 
 // --- Helper Functions (unchanged) ---
 function flatten(buffers) {
@@ -17,6 +20,7 @@ function flatten(buffers) {
   for (const b of buffers) { out.set(b, offset); offset += b.length; }
   return out;
 }
+
 
 function encodeWAV(samples) {
   const buf = new ArrayBuffer(44 + samples.length * 2);
@@ -36,6 +40,7 @@ function encodeWAV(samples) {
   return new Blob([view], { type: 'audio/wav' });
 }
 
+
 async function upload(blob, name, userId) {
   if (!userId) {
     console.error("User ID is required for upload. Upload cancelled.");
@@ -45,7 +50,8 @@ async function upload(blob, name, userId) {
   f.append("audio", blob, name);
   f.append("user_id", userId);
 
-  return fetch("http://localhost:8000/uploadchunk", {
+
+  return fetch(`${API_BASE_URL}/uploadchunk`, {
     headers: { "X-API-Key": API_KEY },
     method: "POST",
     body: f,
@@ -55,11 +61,10 @@ async function upload(blob, name, userId) {
   });
 }
 
-// --- The Custom Hook ---
-// No longer needs userId as a prop
+
 export function useAudioRecorder() {
-  // Get the user from the context
   const { user } = useUser(); 
+
 
   const [mics, setMics] = useState([]);
   const [deviceId, setDeviceId] = useState('');
@@ -67,10 +72,10 @@ export function useAudioRecorder() {
   const [paused, setPaused] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
 
-  // This ref will hold the user ID and keep it in sync
+
   const userIdRef = useRef(user?.id);
 
-  // Refs for audio processing
+
   const micStreamRef = useRef(null);
   const audioCtxRef = useRef(null);
   const processorRef = useRef(null);
@@ -82,12 +87,12 @@ export function useAudioRecorder() {
   const uploadPromisesRef = useRef([]);
   const timerRef = useRef(null);
 
-  // Keep the user ID ref in sync with the user from context
+
   useEffect(() => {
     userIdRef.current = user?.id;
   }, [user]);
 
-  // --- Core Functions ---
+
   const startTimer = () => {
     timerRef.current = setInterval(() => { setRecordingTime(prev => prev + 1); }, 1000);
   };
@@ -98,15 +103,15 @@ export function useAudioRecorder() {
     }
   };
 
+
   function emitChunk(startOffset, endOffset, isFinal = false) {
     const full = flatten(pcmBuffersRef.current);
     const slice = full.slice(startOffset, endOffset);
-    if (!slice.length) return;
+    if (!slice.length) return;       
     const wav = encodeWAV(slice);
     const id = chunkCounterRef.current++;
     const name = `chunk_${id}${isFinal ? '_final' : ''}.wav`;
     
-    // Use the user ID from the ref
     const p = upload(wav, name, userIdRef.current).catch(err => console.error(err));
     uploadPromisesRef.current.push(p);
     p.finally(() => {
@@ -114,10 +119,17 @@ export function useAudioRecorder() {
     });
   }
 
+
   function scheduleChunks() {
     timeoutsRef.current.forEach(t => clearTimeout(t));
     timeoutsRef.current = [];
     const startMs = startTimeRef.current || Date.now();
+    
+    // ✅ CHANGE: use the chunk counter as the authoritative next chunk index,
+    // falling back to compute from recordingTime if counter is unset.
+    const fallbackIndex = (recordingTime <= recordSec) ? 1 : Math.floor((recordingTime - recordSec) / stepSec) + 2;
+    const nextChunkIndex = Math.max(1, Math.floor(chunkCounterRef.current) || fallbackIndex);
+
     function scheduleNext(i) {
       const fireTimeAbs = startMs + recordSec * 1000 + (i - 1) * stepSec * 1000;
       const delay = Math.max(0, fireTimeAbs - Date.now());
@@ -129,12 +141,21 @@ export function useAudioRecorder() {
       }, delay);
       timeoutsRef.current.push(t);
     }
-    scheduleNext(1);
+    scheduleNext(nextChunkIndex);  // Start from chunkCounterRef if available
   }
+
 
   const startRec = async (resetTimer = true) => {
     if (micStreamRef.current) micStreamRef.current.getTracks().forEach(track => track.stop());
-    if (audioCtxRef.current) await audioCtxRef.current.close();
+    if (audioCtxRef.current) {
+      try {
+        await audioCtxRef.current.close();
+      } catch (e) {
+        console.warn("AudioContext close() error on startRec:", e);
+      }
+      audioCtxRef.current = null;
+    }
+
 
     const stream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId } });
     micStreamRef.current = stream;
@@ -143,8 +164,10 @@ export function useAudioRecorder() {
     processorRef.current = audioCtxRef.current.createScriptProcessor(4096, 1, 1);
     processorRef.current.onaudioprocess = (e) => pcmBuffersRef.current.push(new Float32Array(e.inputBuffer.getChannelData(0)));
 
+
     sourceRef.current.connect(processorRef.current);
     processorRef.current.connect(audioCtxRef.current.destination);
+
 
     if (resetTimer) {
       pcmBuffersRef.current = [];
@@ -156,25 +179,39 @@ export function useAudioRecorder() {
       startTimeRef.current = Date.now() - recordingTime * 1000;
     }
 
+
     setRecording(true);
     setPaused(false);
     startTimer();
     scheduleChunks();
   };
 
+
   const pauseRec = async () => {
     setPaused(true);
     stopTimer();
+    // ✅ CHANGE 2: Clear pending timeouts when pausing
+    timeoutsRef.current.forEach(t => clearTimeout(t));
+    timeoutsRef.current = [];
     if (micStreamRef.current) micStreamRef.current.getTracks().forEach(track => track.stop());
-    if (audioCtxRef.current) await audioCtxRef.current.close();
+    if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+      try {
+        await audioCtxRef.current.close();
+      } catch (e) {
+        console.warn("AudioContext close() error on pauseRec:", e);
+      }
+      audioCtxRef.current = null;
+    }
     processorRef.current = null;
     sourceRef.current = null;
   };
+
 
   const resumeRec = async () => {
     setPaused(false);
     await startRec(false);
   };
+
 
   const stopRec = async () => {
     setRecording(false);
@@ -182,10 +219,15 @@ export function useAudioRecorder() {
     stopTimer();
     timeoutsRef.current.forEach(t => clearTimeout(t));
     if (micStreamRef.current) micStreamRef.current.getTracks().forEach(track => track.stop());
-    if (processorRef.current) processorRef.current.disconnect();
-    if (sourceRef.current) sourceRef.current.disconnect();
+    if (processorRef.current) {
+      try { processorRef.current.disconnect(); } catch(e){/* ignore */ }
+    }
+    if (sourceRef.current) {
+      try { sourceRef.current.disconnect(); } catch(e){/* ignore */ }
+    }
 
-    if (audioCtxRef.current) {
+
+    if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
       const full = flatten(pcmBuffersRef.current);
       const elapsedSamples = full.length;
       if (chunkCounterRef.current <= 1) {
@@ -200,9 +242,15 @@ export function useAudioRecorder() {
         }
       }
       await Promise.allSettled(uploadPromisesRef.current);
-      await audioCtxRef.current.close();
+      try {
+        await audioCtxRef.current.close();
+      } catch(e) {
+        console.warn("AudioContext close() error on stopRec:", e);
+      }
+      audioCtxRef.current = null;
     }
   };
+
 
   useEffect(() => {
     navigator.mediaDevices.enumerateDevices().then(devs => {
@@ -216,6 +264,7 @@ export function useAudioRecorder() {
       if (micStreamRef.current) micStreamRef.current.getTracks().forEach(track => track.stop());
     };
   }, []);
+
 
   return {
     mics,

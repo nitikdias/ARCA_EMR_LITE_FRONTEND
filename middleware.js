@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const API_KEY = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY || "";
 
 export async function middleware(req) {
   const { pathname } = req.nextUrl;
@@ -24,11 +26,11 @@ export async function middleware(req) {
 
   try {
     // ✅ Verify session with Flask backend
-    const res = await fetch("http://localhost:8000/verify-session", {
+    const res = await fetch(`${API_BASE_URL}/verify-session`, {
       method: "POST",
       headers: { 
         "Content-Type": "application/json", 
-        "X-API-Key": "n1i2t3i4k5d6i7a8s" 
+        "X-API-Key": API_KEY,
       },
       body: JSON.stringify({ session_id: sessionId }),
     });

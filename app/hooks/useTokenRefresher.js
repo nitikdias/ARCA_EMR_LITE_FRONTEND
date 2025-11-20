@@ -4,16 +4,18 @@ import { useEffect } from "react";
 
 export default function useTokenRefresher() {
   useEffect(() => {
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+    const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
     const refreshAccessToken = async () => {
       const refreshToken = localStorage.getItem("refresh_token");
       if (!refreshToken) return;
 
       try {
-        const res = await fetch("http://localhost:8000/refresh", {
+        const res = await fetch(`${API_BASE_URL}/refresh`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-API-Key": "n1i2t3i4k5d6i7a8s",
+            "X-API-Key": API_KEY,
           },
           body: JSON.stringify({ refresh_token: refreshToken }),
         });

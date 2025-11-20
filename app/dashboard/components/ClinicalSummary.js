@@ -1,10 +1,12 @@
 "use client";
-import React from 'react';
+import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import { generatePDF } from '../utils/pdfGenerator'; 
 import { useUser } from '@/context/userContext';
 
-const API_KEY = "n1i2t3i4k5d6i7a8s";
+const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
+const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY || "";
+const INFER_URL = process.env.NEXT_PUBLIC_INFER_URL || "";
 
 // --- WAV Conversion Utilities (unchanged) ---
 async function convertWebMToWav(webmBlob) {
@@ -66,9 +68,9 @@ function floatTo16BitPCM(output, offset, input) {
 }
 
 // --- Summary Section ---
-function SummarySection({ sectionKey, section, onUpdate, onSave }) {
+function SummarySection({ sectionKey, section, onUpdate, onSave, onRemove, canRemove }) {
   const { user } = useUser();
-  const [isDictating, setIsDictating] = React.useState(false);
+  const [isDictating, setIsDictating] = useState(false);
   const mediaRecorderRef = React.useRef(null);
   const audioChunksRef = React.useRef([]);
 
@@ -98,8 +100,8 @@ function SummarySection({ sectionKey, section, onUpdate, onSave }) {
             formData.append("audio", wavBlob, "dictation.wav");
             formData.append("user_id", userId);
 
-            const response = await fetch("http://localhost:8002/whisper-dictate", {
-              headers: { "X-API-Key": API_KEY },
+            const response = await fetch(`${INFER_URL}`, {
+              headers: { "Authorization": `Bearer ${TOKEN_KEY}` },
               method: "POST",
               body: formData,
             });
@@ -142,6 +144,12 @@ function SummarySection({ sectionKey, section, onUpdate, onSave }) {
     }
   };
 
+  const handleCopySection = () => {
+    const content = `${section.title}:\n${section.content || 'No content'}`;
+    navigator.clipboard.writeText(content);
+    toast.success(`${section.title} copied to clipboard!`);
+  };
+
   const decodeHtml = (html) => {
     const txt = document.createElement("textarea");
     txt.innerHTML = html;
@@ -149,7 +157,7 @@ function SummarySection({ sectionKey, section, onUpdate, onSave }) {
   };
 
   return (
-    <div key={sectionKey} className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-4 relative text-black">
+    <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-3 relative text-black">
       <div className="mb-3 flex items-center justify-between">
         {section.editingTitle ? (
           <input
@@ -175,22 +183,26 @@ function SummarySection({ sectionKey, section, onUpdate, onSave }) {
             {section.title}
           </h3>
         )}
-        <div className="flex items-center">
+        <div className="flex items-center gap-1">
           <button
-            onClick={() => {
-              if (section.editingContent) onSave(sectionKey, section.content);
-              onUpdate(sectionKey, (prev) => ({
-                ...prev,
-                editingContent: !prev.editingContent,
-              }));
+            onClick={async () => {
+              if (section.editingContent) {
+                // Save first, then ensure editingContent is turned OFF
+                await onSave(sectionKey, section.content);
+                onUpdate(sectionKey, (prev) => ({ ...prev, editingContent: false }));
+              } else {
+                // Enter edit mode
+                onUpdate(sectionKey, (prev) => ({ ...prev, editingContent: true }));
+              }
             }}
-            className="p-2 border-none bg-transparent"
+            className="p-2 border-none bg-transparent hover:bg-slate-200 rounded transition-colors"
+            title={section.editingContent ? "Save" : "Edit"}
           >
             {section.editingContent ? "💾" : <img src="/images/edit.png" alt="Edit" className="w-4 h-4" />}
           </button>
           <button
             onClick={handleDictateClick}
-            className="p-2 border-none bg-transparent"
+            className="p-2 border-none bg-transparent hover:bg-slate-200 rounded transition-colors"
             title={isDictating ? "Stop dictation" : "Start dictation"}
           >
             {isDictating ? (
@@ -199,6 +211,22 @@ function SummarySection({ sectionKey, section, onUpdate, onSave }) {
               <img src="/images/mic.png" alt="Dictate" className="w-4 h-4" />
             )}
           </button>
+          <button
+            onClick={handleCopySection}
+            className="p-2 border-none bg-transparent hover:bg-slate-200 rounded transition-colors"
+            title="Copy section"
+          >
+            <img src="/images/copy.png" alt="Copy" className="w-4 h-4" />
+          </button>
+          {canRemove && (
+            <button
+              onClick={() => onRemove(sectionKey)}
+              className="p-2 border-none bg-transparent hover:bg-red-100 rounded transition-colors"
+              title="Remove section"
+            >
+              <span className="text-red-600 font-bold text-lg">×</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -224,15 +252,16 @@ function SummarySection({ sectionKey, section, onUpdate, onSave }) {
   );
 }
 
-// --- Main Summary Component ---
+
 export default function ClinicalSummary({ sections, setSections, saveSectionToDB, transcript }) {
+  const MAX_SECTIONS = 10;
+  const [newSectionTitle, setNewSectionTitle] = useState("");
+  const [showAddSection, setShowAddSection] = useState(false);
+
   const handleUpdateSection = (key, updater) => {
     setSections((prev) => ({
       ...prev,
-      [key]:
-        typeof updater === "function"
-          ? updater(prev[key])
-          : { ...prev[key], ...updater },
+      [key]: typeof updater === "function" ? updater(prev[key]) : { ...prev[key], ...updater },
     }));
   };
 
@@ -241,6 +270,7 @@ export default function ClinicalSummary({ sections, setSections, saveSectionToDB
       .split("\n")
       .map((line) => line.trim())
       .filter(Boolean);
+    
     const uniqueLines = Array.from(
       new Set(lines.map((line) => line.replace(/^[-•\s]+/, "").trim().toLowerCase()))
     ).map((normalized) => {
@@ -249,6 +279,7 @@ export default function ClinicalSummary({ sections, setSections, saveSectionToDB
       );
       return original.startsWith("-") ? original : `- ${original}`;
     });
+    
     const cleanedContent = uniqueLines.join("\n");
 
     setSections((prev) => ({
@@ -256,7 +287,45 @@ export default function ClinicalSummary({ sections, setSections, saveSectionToDB
       [key]: { ...prev[key], content: cleanedContent, editingContent: false },
     }));
 
+    // ✅ Actually save to database
     await saveSectionToDB(key, cleanedContent);
+  };
+
+  const handleAddSection = () => {
+    if (!newSectionTitle.trim()) {
+      toast.error("Section title cannot be empty");
+      return;
+    }
+
+    const sectionCount = Object.keys(sections).length;
+    if (sectionCount >= MAX_SECTIONS) {
+      toast.error(`Maximum ${MAX_SECTIONS} sections allowed`);
+      return;
+    }
+
+    const newKey = `custom_${Date.now()}`;
+    setSections((prev) => ({
+      ...prev,
+      [newKey]: {
+        title: newSectionTitle,
+        content: "",
+        editingTitle: false,
+        editingContent: false,
+      },
+    }));
+
+    setNewSectionTitle("");
+    setShowAddSection(false);
+    toast.success("Section added successfully");
+  };
+
+  const handleRemoveSection = (key) => {
+    setSections((prev) => {
+      const updated = { ...prev };
+      delete updated[key];
+      return updated;
+    });
+    toast.success("Section removed");
   };
 
   const handleCopyToClipboard = () => {
@@ -269,37 +338,91 @@ export default function ClinicalSummary({ sections, setSections, saveSectionToDB
     toast.success("Copied to clipboard!");
   };
 
+  const sectionCount = Object.keys(sections).length;
+  const canAddMore = sectionCount < MAX_SECTIONS;
+
   return (
-    <div className="bg-white rounded-lg p-4 sm:p-6 border border-gray-200 shadow-sm flex flex-col">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5">
-            <svg viewBox="0 0 24 24" fill="currentColor" className="text-gray-800">
-              <path d="M9 11H7v6h2v-6zm4 0h-2v6h2v-6zm4 0h-2v6h2v-6zm2-7h-3V2h-2v2H8V2H6v2H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H3V9h14v11z" />
-            </svg>
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col h-full max-h-[calc(100vh-120px)]">
+      {/* Fixed Header */}
+      <div className="flex-shrink-0 p-4 sm:p-6 border-b border-gray-200">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5">
+              <svg viewBox="0 0 24 24" fill="currentColor" className="text-gray-800">
+                <path d="M9 11H7v6h2v-6zm4 0h-2v6h2v-6zm4 0h-2v6h2v-6zm2-7h-3V2h-2v2H8V2H6v2H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H3V9h14v11z" />
+              </svg>
+            </div>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-800 m-0">
+              Clinical Summary
+            </h2>
+            <span className="text-xs text-gray-500">({sectionCount}/{MAX_SECTIONS})</span>
           </div>
-          <h2 className="text-base sm:text-lg font-semibold text-gray-800 m-0">
-            Clinical Summary
-          </h2>
+          <div className="flex gap-2 flex-wrap">
+            {canAddMore && (
+              <button
+                onClick={() => setShowAddSection(!showAddSection)}
+                className="px-3 py-2 border border-gray-800 rounded bg-transparent hover:bg-gray-50 text-sm font-medium transition-colors text-gray-800"
+                title="Add new section"
+              >
+                + Add Section
+              </button>
+            )}
+            <button
+              onClick={handleCopyToClipboard}
+              className="p-2 border border-gray-800 rounded bg-transparent hover:bg-gray-50 transition-colors"
+              title="Copy all to clipboard"
+            >
+              <img src="/images/copy.png" alt="Copy" className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => generatePDF(sections, transcript)}
+              className="p-2 border border-gray-800 rounded bg-transparent hover:bg-gray-50 transition-colors"
+              title="Download as PDF"
+            >
+              <img src="/images/downloads.png" alt="Save PDF" className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={handleCopyToClipboard}
-            className="p-2 border border-gray-800 rounded bg-transparent hover:bg-gray-50"
-            title="Copy to clipboard"
-          >
-            <img src="/images/copy.png" alt="Copy" className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => generatePDF(sections, transcript)}
-            className="p-2 border border-gray-800 rounded bg-transparent hover:bg-gray-50"
-            title="Download as PDF"
-          >
-            <img src="/images/downloads.png" alt="Save PDF" className="w-4 h-4" />
-          </button>
-        </div>
+
+        {/* Add Section Input */}
+        {showAddSection && (
+          <div className="mt-3 flex gap-2">
+            <input
+              type="text"
+              value={newSectionTitle}
+              onChange={(e) => setNewSectionTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAddSection();
+                if (e.key === "Escape") setShowAddSection(false);
+              }}
+              placeholder="Enter section title..."
+              className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+              autoFocus
+            />
+            <button
+              onClick={handleAddSection}
+              className="px-4 py-2 text-white rounded hover:opacity-90 text-sm font-medium transition-colors"
+              style={{
+                backgroundColor: '#012537',
+              }}
+            >
+              Add
+            </button>
+            <button
+              onClick={() => {
+                setShowAddSection(false);
+                setNewSectionTitle("");
+              }}
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm font-medium transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
       </div>
-      <div className="flex-1 overflow-y-auto">
+
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
         {Object.keys(sections).map((key) => (
           <SummarySection
             key={key}
@@ -307,9 +430,32 @@ export default function ClinicalSummary({ sections, setSections, saveSectionToDB
             section={sections[key]}
             onUpdate={handleUpdateSection}
             onSave={handleSaveSection}
+            onRemove={handleRemoveSection}
+            canRemove={sectionCount > 1}
           />
         ))}
       </div>
+
+      <style jsx>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #f1f5f9;
+          border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8;
+        }
+        .custom-scrollbar {
+          scrollbar-width: thin;
+          scrollbar-color: #cbd5e1 #f1f5f9;
+        }
+      `}</style>
     </div>
   );
 }

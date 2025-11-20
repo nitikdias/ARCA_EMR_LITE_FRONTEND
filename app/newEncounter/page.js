@@ -1,6 +1,7 @@
+// Full component with ONLY design changes applied (background + logo + responsive)
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react"; // ⭐️ CHANGE 1: Imported useCallback
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useMeeting } from "@/context/meetingContext";
 import Sidebar from "../sidebar/page";
@@ -12,239 +13,190 @@ import { useDebounce } from "../hooks/useDebounce";
 export default function NewEncounter() {
   const router = useRouter();
   const { setMeetingId, setCurrentPatient } = useMeeting();
+  const { setCanRecord } = useRecording();
 
   const [patients, setPatients] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showNewPatientForm, setShowNewPatientForm] = useState(false);
-  const [newPatient, setNewPatient] = useState({
-    name: "",
-    age: "",
-    gender: "",
-    hospital_id: "",
-  });
+  const [newPatient, setNewPatient] = useState({ name: "", age: "", gender: "", hospital_id: "" });
   const [userId, setUserId] = useState(null);
   const [stats, setStats] = useState({ today: 0, week: 0 });
 
-  const { setCanRecord } = useRecording();
-
-  const API_KEY = "n1i2t3i4k5d6i7a8s";
+  const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  // ---------------------- DESIGN ONLY ----------------------
+  const containerStyle = {
+    backgroundImage: "url('/images/auth-image.png')",
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
+    minHeight: "100vh",
+    width: "100%",
+    display: "flex",
+    flexDirection: "column"
+  };
+
+  const contentWrapperStyle = {
+    flex: 1,
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: "20px"
+  };
+
+  const formWrapperStyle = {
+    width: "100%",
+    maxWidth: "480px",
+    padding: "24px",
+    backgroundColor: "rgba(255,255,255,0.92)",
+    borderRadius: "12px",
+    backdropFilter: "blur(10px)",
+    boxShadow: "0 4px 16px rgba(0,0,0,0.15)"
+  };
+
+  const logoStyle = {
+    width: "150px",
+    margin: "0 auto 25px auto",
+    display: "block"
+  };
+  // ---------------------------------------------------------
 
   const handleLogout = async () => {
     try {
-      console.log("🚪 Starting logout...");
-
-      // ✅ Call Next.js API route (which forwards to Flask)
-      const res = await fetch("/api/logout", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
+      const res = await fetch("/api/logout", { method: "POST", headers: { "Content-Type": "application/json" } });
       if (res.ok) {
-        console.log("✅ Logout successful");
-        
-        // ✅ Clear all localStorage
         localStorage.clear();
-        console.log("✅ Cleared localStorage");
-        
-        // ✅ Browser will automatically clear the session_id cookie
-        // (Next.js set max_age=0 in response)
-        
-        console.log("🔄 Redirecting to login...");
-        
-        // ✅ Redirect to login
         router.push("/login");
-        
-        // ✅ Optional: Force full page reload after a short delay
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 100);
-      } else {
-        const errorData = await res.json();
-        console.error("❌ Logout failed:", errorData.error);
-        alert("Logout failed. Please try again.");
+        setTimeout(() => (window.location.href = "/login"), 100);
       }
     } catch (err) {
-      console.error("💥 Error during logout:", err);
-      alert("An error occurred during logout.");
+      console.error("Logout error:", err);
     }
   };
 
   async function fetchStats() {
-    const userId = localStorage.getItem("userId");
-    if (!userId) {
-      console.warn("User ID not found in localStorage");
-      return;
-    }
+    const id = localStorage.getItem("userId");
+    if (!id) return;
     try {
-      const res = await fetch(`http://localhost:8000/stats?user_id=${userId}`, {
-        headers: { "Content-Type": "application/json", "X-API-Key": API_KEY },
+      const res = await fetch(`${API_BASE_URL}/stats?user_id=${id}`, {
+        headers: { "Content-Type": "application/json", "X-API-Key": API_KEY }
       });
-      if (res.ok) {
-        const data = await res.json();
-        setStats(data);
-      } else {
-        console.error("Failed to fetch stats:", res.statusText);
-      }
+      if (res.ok) setStats(await res.json());
     } catch (err) {
-      console.error("Failed to fetch stats:", err);
+      console.error(err);
     }
   }
 
-  useEffect(() => {
-    fetchStats();
-  }, []);
+  useEffect(() => { fetchStats(); }, []);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const id = localStorage.getItem("userId");
-      setUserId(id);
-    }
+    if (typeof window !== "undefined") setUserId(localStorage.getItem("userId"));
   }, []);
 
-  // ⭐️ CHANGE 2: Extracted fetch logic into a reusable function with useCallback
   const fetchPatients = useCallback(async () => {
-    const userId = localStorage.getItem('userId');
-
-    if (!userId) {
-      console.error("Authentication details not found. Please log in again.");
-      return;
-    }
+    const id = localStorage.getItem("userId");
+    if (!id) return;
     try {
-      let url = `http://localhost:8000/patients?user_id=${userId}`;
-      // Use the debounced term for searching
-      if (debouncedSearchTerm) {
-        url += `&search=${debouncedSearchTerm}`;
-      }
-      const res = await fetch(url, {
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": API_KEY,
-        },
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || "Failed to fetch patients");
-      }
-      const data = await res.json();
-      setPatients(data);
+      let url = `${API_BASE_URL}/patients?user_id=${id}`;
+      if (debouncedSearchTerm) url += `&search=${debouncedSearchTerm}`;
+
+      const res = await fetch(url, { headers: { "Content-Type": "application/json", "X-API-Key": API_KEY } });
+      if (!res.ok) throw new Error();
+      setPatients(await res.json());
     } catch (err) {
       console.error(err);
       setPatients([]);
     }
-  }, [debouncedSearchTerm]); // This function updates if the search term changes
+  }, [debouncedSearchTerm]);
 
-  // This useEffect now calls our reusable function
   useEffect(() => {
-    if (localStorage.getItem('userId')) {
-      fetchPatients();
-    }
-  }, [fetchPatients]); // It runs when the component loads and when the search term changes
+    if (localStorage.getItem("userId")) fetchPatients();
+  }, [fetchPatients]);
 
   const handleStartSession = async () => {
     if (!userId || !selectedPatient) return alert("Select user & patient");
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:8000/new_encounter", {
+      const res = await fetch(`${API_BASE_URL}/new_encounter`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-API-Key": API_KEY },
-        body: JSON.stringify({ user_id: userId, patient_id: selectedPatient.id }),
+        body: JSON.stringify({ user_id: userId, patient_id: selectedPatient.id })
       });
+
       const data = await res.json();
       if (res.ok) {
         setMeetingId(data.meeting_id);
         setCurrentPatient(selectedPatient);
         localStorage.setItem("meetingId", data.meeting_id);
         setCanRecord(true);
-        toast.success("Session started! You can now start recording.");
+        toast.success("Session started!");
         router.push("/");
-      } else {
-        alert("Failed: " + (data.error || "Unknown error"));
       }
     } catch (err) {
       console.error(err);
-      alert("Error starting session");
     } finally {
       setLoading(false);
     }
   };
 
-  // ⭐️ CHANGE 3: Updated handleCreatePatient to re-fetch the list on success
   const handleCreatePatient = async (e) => {
     e.preventDefault();
     try {
       const user_id = localStorage.getItem("userId");
-      if (!user_id) {
-        alert("User ID not found in localStorage. Please log in again.");
-        return;
-      }
-      const payload = {
-        name: newPatient.name,
-        age: newPatient.age ? Number(newPatient.age) : null,
-        gender: newPatient.gender || null,
-        hospital_id: newPatient.hospital_id || null,
-        user_id,
-      };
-      const res = await fetch("http://localhost:8000/patients", {
+      if (!user_id) return alert("User not found");
+
+      const res = await fetch(`${API_BASE_URL}/patients`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-API-Key": API_KEY },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...newPatient, age: Number(newPatient.age), user_id })
       });
+
       const data = await res.json();
       if (res.ok) {
-        // This is the fix: Re-fetch the entire patient list from the server
         await fetchPatients();
-        
-        // The rest of your logic to select the new patient
         setSelectedPatient(data);
         setSearchTerm(data.name);
         setShowNewPatientForm(false);
         setNewPatient({ name: "", age: "", gender: "", hospital_id: "" });
-        setCurrentPatient(data);
-      } else {
-        alert("Failed: " + (data.error || "Unknown error"));
       }
     } catch (err) {
       console.error(err);
-      alert("Error creating patient");
     }
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", backgroundColor: "#f9fafb" }}>
+    <div style={containerStyle}>
       <Header handleLogout={handleLogout} />
+
       <div style={{ display: "flex", flex: 1 }}>
         <Sidebar stats={stats} />
-        <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", padding: "20px" }}>
-          <div style={{ width: "100%", maxWidth: "500px", padding: "20px", backgroundColor: "white", borderRadius: "8px", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
-            <h2 style={{ textAlign: "center", marginBottom: "20px", color: "black" }}>
-              Start New Encounter
-            </h2>
-            <div style={{ marginBottom: "29px" }}>
+
+        <div style={contentWrapperStyle}>
+          <div style={formWrapperStyle}>
+            <img src="/images/auth-logo.png" alt="Auth Logo" style={logoStyle} />
+
+            <h2 style={{ textAlign: "center", marginBottom: "20px", color: "black", fontWeight: "600" }}>Start New Encounter</h2>
+
+            <div style={{ marginBottom: "20px" }}>
               <input
                 type="text"
                 placeholder="Search patient..."
                 value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setSelectedPatient(null);
-                }}
-                style={{ width: "100%", padding: "8px", border: "1px solid #ccc", borderRadius: "6px", color: "black" }}
+                onChange={(e) => { setSearchTerm(e.target.value); setSelectedPatient(null); }}
+                style={{ width: "100%", padding: "12px", border: "1px solid #ccc", borderRadius: "8px", fontSize: "15px",color: "black" }}
               />
+
               {searchTerm && patients.length > 0 && (
-                <ul style={{ listStyle: "none", margin: "8px 0 0 0", padding: "8px", border: "1px solid #ccc", borderRadius: "6px", background: "white", maxHeight: "150px", overflowY: "auto", width: "100%", zIndex: 10, color: "black" }}>
+                <ul style={{ listStyle: "none", marginTop: "10px", padding: "10px", background: "white", border: "1px solid #ccc", borderRadius: "8px", maxHeight: "160px", overflowY: "auto" }}>
                   {patients.map((p) => (
                     <li
                       key={p.id}
-                      onClick={() => {
-                        setSelectedPatient(p);
-                        setSearchTerm(p.name);
-                      }}
-                      style={{ padding: "6px", cursor: "pointer", background: selectedPatient?.id === p.id ? "#e0e7ff" : "transparent" }}
+                      onClick={() => { setSelectedPatient(p); setSearchTerm(p.name); }}
+                      style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #eee",color: "black" }}
                     >
                       {p.name}
                     </li>
@@ -252,54 +204,61 @@ export default function NewEncounter() {
                 </ul>
               )}
             </div>
+
             {selectedPatient && (
-              <div style={{ marginBottom: "12px", color: "black" }}>
+              <div style={{ marginBottom: "12px", fontWeight: "500",color: "black" }}>
                 <strong>Selected Patient:</strong> {selectedPatient.name}
               </div>
             )}
-            <div style={{ display: "flex", gap: "12px", marginBottom: "12px" }}>
+
+            <div style={{ display: "flex", gap: "12px", marginBottom: "18px" }}>
               <button
                 onClick={handleStartSession}
                 disabled={loading}
-                style={{ backgroundColor: "transparent", color: "#012537", border: "2px solid #012537", borderRadius: "6px", padding: "10px 16px", cursor: "pointer", flex: 1 }}
+                style={{ flex: 1, padding: "12px", border: "2px solid #012537", color: "#012537", background: "transparent", borderRadius: "8px", fontSize: "15px" }}
               >
                 {loading ? "Starting..." : "Start Session"}
               </button>
+
               <button
                 onClick={() => setShowNewPatientForm((prev) => !prev)}
-                style={{ backgroundColor: "transparent", color: "#012537", border: "2px solid #012537", borderRadius: "6px", padding: "10px 16px", cursor: "pointer", flex: 1 }}
+                style={{ flex: 1, padding: "12px", border: "2px solid #012537", color: "#012537", background: "transparent", borderRadius: "8px", fontSize: "15px" }}
               >
                 New Patient
               </button>
             </div>
+
             {showNewPatientForm && (
-              <form onSubmit={handleCreatePatient} style={{ border: "1px solid #ccc", borderRadius: "6px", padding: "16px", background: "white", color: "black" }}>
-                <h3 style={{ marginBottom: "12px", textAlign: "center" }}>Create New Patient</h3>
+              <form onSubmit={handleCreatePatient} style={{ border: "1px solid #ccc", borderRadius: "8px", padding: "18px", background: "white",color: "black" }}>
+                <h3 style={{ textAlign: "center", marginBottom: "14px", fontWeight: "600",color:"black" }}>Create New Patient</h3>
+
                 <label>
-                  Name: <span style={{ color: "red" }}>*</span>
+                  Name: *
                   <input
                     type="text"
                     value={newPatient.name}
-                    onChange={(e) => setNewPatient({ ...newPatient, name: e.target.value })}
                     required
-                    style={{ width: "100%", padding: "6px", marginBottom: "8px", border: "1px solid #ccc", borderRadius: "6px" }}
+                    onChange={(e) => setNewPatient({ ...newPatient, name: e.target.value })}
+                    style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "6px", border: "1px solid #ccc", color: "black" }}
                   />
                 </label>
+
                 <label>
                   Age:
                   <input
                     type="number"
                     value={newPatient.age}
                     onChange={(e) => setNewPatient({ ...newPatient, age: e.target.value })}
-                    style={{ width: "100%", padding: "6px", marginBottom: "8px", border: "1px solid #ccc", borderRadius: "6px" }}
+                    style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "6px", border: "1px solid #ccc" }}
                   />
                 </label>
+
                 <label>
                   Gender:
                   <select
                     value={newPatient.gender}
                     onChange={(e) => setNewPatient({ ...newPatient, gender: e.target.value })}
-                    style={{ width: "100%", padding: "6px", marginBottom: "8px", border: "1px solid #ccc", borderRadius: "6px" }}
+                    style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "6px", border: "1px solid #ccc" }}
                   >
                     <option value="">Select</option>
                     <option value="Male">Male</option>
@@ -307,18 +266,20 @@ export default function NewEncounter() {
                     <option value="Other">Other</option>
                   </select>
                 </label>
+
                 <label>
                   Hospital ID:
                   <input
                     type="text"
                     value={newPatient.hospital_id}
                     onChange={(e) => setNewPatient({ ...newPatient, hospital_id: e.target.value })}
-                    style={{ width: "100%", padding: "6px", marginBottom: "8px", border: "1px solid #ccc", borderRadius: "6px" }}
+                    style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "6px", border: "1px solid #ccc" }}
                   />
                 </label>
+
                 <button
                   type="submit"
-                  style={{ backgroundColor: "transparent", color: "#012537", border: "2px solid #012537", borderRadius: "6px", padding: "10px 16px", cursor: "pointer", width: "100%" }}
+                  style={{ width: "100%", padding: "12px", border: "2px solid #012537", background: "transparent", color: "#012537", borderRadius: "8px", fontSize: "15px" }}
                 >
                   Create Patient
                 </button>

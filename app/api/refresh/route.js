@@ -16,13 +16,15 @@ export async function POST(request) {
     }
 
     console.log('🔁 Forwarding refresh request to Flask backend');
+      const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
+      const API_KEY = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY ;
 
-    // ✅ Forward request to Flask with the session_id cookie
-    const response = await fetch('http://localhost:8000/refresh', {
+      // ✅ Forward request to Flask with the session_id cookie
+      const response = await fetch(`${API_BASE_URL}/refresh`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Key': 'n1i2t3i4k5d6i7a8s',
+          'X-API-Key': API_KEY,
         'Cookie': `session_id=${sessionId.value}`,
       },
     });

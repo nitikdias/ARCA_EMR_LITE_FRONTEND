@@ -63,7 +63,8 @@ export default function ReportPage({ user }) {
     }
   };
 
-  const API_KEY = "n1i2t3i4k5d6i7a8s";
+  const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
   // Fetch meetings
   useEffect(() => {
@@ -72,7 +73,7 @@ export default function ReportPage({ user }) {
       if (!userId) return;
 
       try {
-        const res = await fetch(`http://localhost:8000/meetings?user_id=${userId}`,{
+        const res = await fetch(`${API_BASE_URL}/meetings?user_id=${userId}`,{
           headers: {
           "Content-Type": "application/json",
           "X-API-Key": API_KEY,
@@ -99,7 +100,7 @@ export default function ReportPage({ user }) {
       if (!userId) return;
 
       try {
-        const res = await fetch(`http://localhost:8000/stats?user_id=${userId}`,{
+        const res = await fetch(`${API_BASE_URL}/stats?user_id=${userId}`,{
           headers: {
           "Content-Type": "application/json",
           "X-API-Key": API_KEY,
@@ -143,7 +144,7 @@ export default function ReportPage({ user }) {
 
   const handleSaveTranscript = async (id) => {
     try {
-      await fetch(`http://localhost:8000/transcripts/${id}`, {
+      await fetch(`${API_BASE_URL}/transcripts/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editData),
@@ -152,7 +153,7 @@ export default function ReportPage({ user }) {
 
       // Refresh meetings
       const userId = localStorage.getItem("userId");
-      const res = await fetch(`http://localhost:8000/meetings?user_id=${userId}`);
+      const res = await fetch(`${API_BASE_URL}/meetings?user_id=${userId}`);
       const data = await res.json();
       setMeetings(data);
       setFilteredMeetings(data);

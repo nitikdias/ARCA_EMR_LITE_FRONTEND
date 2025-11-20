@@ -11,6 +11,7 @@ export default function Register({ stats }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [user, setUser] = useState(null);
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
   //fetch user details
     useEffect(() => {
@@ -51,7 +52,7 @@ export default function Register({ stats }) {
   setMessage("");
 
   try {
-    const res = await fetch("http://localhost:8000/register", {
+    const res = await fetch(`${API_BASE_URL}/register`, {
       method: "POST",
       body: formData,
     });
