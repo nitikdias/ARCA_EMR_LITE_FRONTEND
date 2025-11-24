@@ -23,7 +23,7 @@ export default function Login() {
 
     const endpoint = isSignup
       ? `${API_BASE_URL}/registerUser`
-      : `https://infer.e2enetworks.net/project/p-8621/endpoint/is-7501/login`;
+      : `https://infer.e2enetworks.net/project/p-8621/endpoint/is-7507/login`;
 
     console.log("📤 Submitting to:", endpoint);
 

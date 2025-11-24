@@ -21,7 +21,7 @@ export async function POST(request) {
       const API_KEY = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY ;
 
       // ✅ Forward request to Flask with the session_id cookie
-      const response = await fetch(`https://infer.e2enetworks.net/project/p-8621/endpoint/is-7501/refresh`, {
+      const response = await fetch(`https://infer.e2enetworks.net/project/p-8621/endpoint/is-7507/refresh`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
