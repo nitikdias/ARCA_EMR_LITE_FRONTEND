@@ -69,7 +69,7 @@ export default function Header({ handleLogout }) {
 
         <div className="hidden md:block">
           <h1 style={{ fontSize: '18px', fontWeight: '600', margin: 0, color: '#ffffffff' }}>
-            ARCA EMR Lite
+            ARCA SPARK
           </h1>
           <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>Ambient Listening</p>
         </div>

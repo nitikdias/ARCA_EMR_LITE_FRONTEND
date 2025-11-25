@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "ARCA EMR LITE",
+  title: "ARCA SPARK",
   description: "Ai ambient clinical note taking",
 };
 
