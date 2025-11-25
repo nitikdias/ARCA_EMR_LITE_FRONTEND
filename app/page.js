@@ -123,6 +123,9 @@ useEffect(() => {
     setSummary("");
     setReadyForSummary(false);
     
+    // ✅ Reset language to English for new encounter
+    setSelectedLanguage("en");
+    
     toast.info("New encounter started - ready for recording");
   }
 }, [meetingId, user]);
@@ -431,7 +434,8 @@ const clearBackendTranscript = async () => {
         <div className="flex-1 p-4 sm:p-6 pt-20 md:pt-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 min-h-[calc(100vh-150px)]">
             <RecordingPanel
-              user={user} 
+              user={user}
+              userLoading={loading}
               mics={mics} deviceId={deviceId} setDeviceId={setDeviceId}
               recording={recording} paused={paused} recordingTime={recordingTime}
               startRec={handleStartRec} stopRec={handleStopRec} pauseRec={pauseRec} resumeRec={resumeRec}

@@ -68,6 +68,7 @@ function CodePenWaveform({ paused }) {
 export default function RecordingPanel({
   // Add user prop
   user,
+  userLoading,
   // Props from audio hook
   mics, deviceId, setDeviceId, recording, paused, recordingTime,
   startRec, stopRec, pauseRec, resumeRec,
@@ -118,12 +119,12 @@ export default function RecordingPanel({
                     !readyForSummary ? (
                     // Update disabled logic and button text
                     <button 
-                        disabled={!canRecord || !user} 
+                        disabled={userLoading || !canRecord || !user} 
                         onClick={handleStart} 
-                        className={`w-full py-2.5 sm:py-3 rounded-lg border-2 text-black border-blue-500 bg-transparent font-semibold text-sm sm:text-base ${(!canRecord || !user) ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-50"}`}
-                        title={!user ? "Loading user..." : (!canRecord ? "Start session first to enable recording" : "")}
+                        className={`w-full py-2.5 sm:py-3 rounded-lg border-2 text-black border-blue-500 bg-transparent font-semibold text-sm sm:text-base ${(userLoading || !canRecord || !user) ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-50"}`}
+                        title={userLoading ? "Loading user..." : (!user ? "User not found" : (!canRecord ? "Start session first to enable recording" : ""))}
                     >
-                        {!user ? "Loading..." : (!canRecord ? "Disabled" : "Start Recording")}
+                        {userLoading ? "Loading..." : (!canRecord ? "Disabled" : "Start Recording")}
                     </button>
                     ) : (
                     <button onClick={() => { handleGenerateSummary(); setReadyForSummary(false); }} className="w-full py-2.5 sm:py-3 rounded-lg border-2 border-green-500 bg-transparent text-black font-semibold text-sm sm:text-base hover:bg-green-50">
