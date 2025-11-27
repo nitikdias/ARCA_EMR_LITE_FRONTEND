@@ -27,7 +27,7 @@ export async function middleware(req) {
 
   try {
     // ✅ Verify session with Flask backend
-    const res = await fetch(`https://infer.e2enetworks.net/project/p-8621/endpoint/is-7549/verify-session`, {
+    const res = await fetch(`${API_BASE_URL}/verify-session`, {
       method: "POST",
       headers: { 
         "Content-Type": "application/json", 
