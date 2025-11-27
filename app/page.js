@@ -133,6 +133,30 @@ useEffect(() => {
     // ✅ Reset language to English for new encounter
     setSelectedLanguage("en");
     
+    // Also update backend language setting to English
+    if (user?.id) {
+      const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
+      (async () => {
+        try {
+          await fetch(`/api/backend/select_language`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${TOKEN_KEY}`,
+            },
+            credentials: "include",
+            body: JSON.stringify({
+              language_code: "en",
+              user_id: user.id,
+            }),
+          });
+          console.log("✅ Language reset to English for new encounter");
+        } catch (error) {
+          console.error("Error resetting language:", error);
+        }
+      })();
+    }
+    
     toast.info("New encounter started - ready for recording");
   }
 }, [meetingId, user]);
