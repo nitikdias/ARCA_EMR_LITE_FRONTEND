@@ -27,7 +27,7 @@ export default function TokenRefreshManager() {
       return;
     }
 
-    console.log("🕒 Token refresh manager started - will refresh every 50 seconds");
+    console.log("🕒 Token refresh manager started - will refresh every 4 minutes");
 
     // ✅ Refresh function that doesn't cause re-renders
     const refreshAccessToken = async () => {
@@ -71,7 +71,7 @@ export default function TokenRefreshManager() {
 
         const data = await res.json();
         console.log(`✅ [${new Date().toLocaleTimeString()}] Token refreshed successfully`);
-        console.log(`   ⏱️  Next refresh in 50 seconds (token expires in ${data.expires_in}s)`);
+        console.log(`   ⏱️  Next refresh in 4 minutes (token expires in ${data.expires_in}s)`);
         return true;
         
       } catch (err) {
@@ -88,22 +88,22 @@ export default function TokenRefreshManager() {
           
           router.push("/login");
         } else {
-          console.warn(`⚠️ Network error, will retry in 50s (${3 - failureCountRef.current} attempts remaining)`);
+          console.warn(`⚠️ Network error, will retry in 4 minutes (${3 - failureCountRef.current} attempts remaining)`);
         }
         return false;
       }
     };
 
-    // ✅ Initial refresh after 5 seconds (to verify everything works)
+    // ✅ Initial refresh after 1 minute (to verify everything works)
     timeoutRef.current = setTimeout(() => {
       console.log("🚀 Performing initial token refresh...");
       refreshAccessToken();
-    }, 5000);
+    }, 60000); // 1 minute
 
-    // ✅ Set up interval to refresh every 50 seconds
+    // ✅ Set up interval to refresh every 4 minutes (240 seconds)
     intervalRef.current = setInterval(() => {
       refreshAccessToken();
-    }, 50000); // 50 seconds
+    }, 240000); // 240 seconds = 4 minutes
 
     console.log("✅ Token refresh intervals set up successfully");
 
