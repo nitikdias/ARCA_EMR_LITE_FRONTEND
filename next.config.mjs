@@ -26,11 +26,11 @@ const nextConfig = {
     return [
       {
         source: '/api/backend/:path*',
-        destination: 'https://infer.e2enetworks.net/project/p-8621/endpoint/is-7572/:path*',
+        destination: 'https://infer.e2enetworks.net/project/p-8621/endpoint/is-7595/:path*',
       },
       {
         source: '/api/whisper/:path*',
-        destination: 'https://infer.e2enetworks.net/project/p-8621/endpoint/is-7568/:path*',
+        destination: 'https://infer.e2enetworks.net/project/p-8621/endpoint/is-7591/:path*',
       },
     ];
   },
