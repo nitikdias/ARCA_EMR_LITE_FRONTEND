@@ -17,8 +17,8 @@ export async function POST(req) {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${process.env.TOKEN_KEY || process.env.NEXT_PUBLIC_TOKEN_KEY}`,
-          'Cookie': `session_id=${sessionId}`,
         },
+        body: JSON.stringify({ session_id: sessionId }),
       }).catch(err => console.error('Backend logout error:', err));
     }
 
