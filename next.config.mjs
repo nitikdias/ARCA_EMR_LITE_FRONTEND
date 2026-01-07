@@ -26,11 +26,11 @@ const nextConfig = {
     return [
       {
         source: '/api/backend/:path*',
-        destination: 'https://infer.e2enetworks.net/project/p-8621/endpoint/is-7682/:path*',
+        destination: 'https://emr-lite-core-gkfqhyd6crf4bne6.z03.azurefd.net/:path*',
       },
       {
         source: '/api/whisper/:path*',
-        destination: 'https://infer.e2enetworks.net/project/p-8621/endpoint/is-7680/:path*',
+        destination: 'http://arca-spark-whisper-stt.eastus.azurecontainer.io:5005/:path*',
       },
     ];
   },

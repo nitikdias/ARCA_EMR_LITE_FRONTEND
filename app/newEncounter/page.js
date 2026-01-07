@@ -111,7 +111,23 @@ export default function NewEncounter() {
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${TOKEN_KEY}` },
         credentials: "include"
       });
-      if (!res.ok) throw new Error();
+
+      if (!res.ok) {
+        const body = await res.text().catch(() => "<no body>");
+        const bodySnippet = (typeof body === "string" ? body : JSON.stringify(body)).slice(0, 200);
+        console.warn(`fetchPatients failed (status=${res.status}) body="${bodySnippet}"`);
+
+        if (res.status === 401) {
+          toast.error("Session expired. Please log in again.");
+          localStorage.clear();
+          router.push("/login");
+          return;
+        }
+
+        setPatients([]);
+        return;
+      }
+
       setPatients(await res.json());
     } catch (err) {
       console.error(err);
