@@ -7,7 +7,7 @@ export default function Login() {
   const router = useRouter();
   const [isSignup, setIsSignup] = useState(false);
   const [loading, setLoading] = useState(false);
-  const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
+  const API_KEY = process.env.API_KEY || "";
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
   const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY ;
 

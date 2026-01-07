@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useUser } from '@/context/userContext';
 
 
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
+const API_KEY = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY || "";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 const sampleRate = 48000;
 const recordSec = 6;

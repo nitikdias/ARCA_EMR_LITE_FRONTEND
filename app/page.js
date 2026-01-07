@@ -13,7 +13,7 @@ import Header from './header/page';
 import RecordingPanel from './dashboard/components/RecordingPanel';
 import ClinicalSummary from './dashboard/components/ClinicalSummary';
 
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
+const API_KEY = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY || "";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
 export default function App() {
@@ -142,7 +142,7 @@ useEffect(() => {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "Authorization": `Bearer ${TOKEN_KEY}`,
+              "X-API-KEY": API_KEY,
             },
             credentials: "include",
             body: JSON.stringify({
@@ -176,7 +176,7 @@ const clearBackendTranscript = async () => {
     const response = await fetch(`/api/backend/clear_transcript`, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${TOKEN_KEY}`,
+        "X-API-KEY": API_KEY,
       },
       credentials: "include",
       body: formData,
@@ -201,7 +201,7 @@ const clearBackendTranscript = async () => {
       const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
       try {
         const res = await fetch(`/api/backend/stats?user_id=${user.id}`, { 
-          headers: { "Authorization": `Bearer ${TOKEN_KEY}` },
+          headers: { "X-API-KEY": API_KEY },
           credentials: "include"
         });
         if (res.ok) setStats(await res.json());
@@ -221,7 +221,7 @@ const clearBackendTranscript = async () => {
         const res = await fetch(`/api/backend/get_transcript`, { 
           method: "POST", 
           body: formData, 
-          headers: { "Authorization": `Bearer ${TOKEN_KEY}` },
+          headers: { "X-API-KEY": API_KEY },
           credentials: "include"
         });
         if (res.ok) {
@@ -266,7 +266,7 @@ const clearBackendTranscript = async () => {
         method: "POST", 
         headers: { 
           "Content-Type": "application/json", 
-          "Authorization": `Bearer ${TOKEN_KEY}` 
+          "X-API-KEY": API_KEY
         },
         credentials: "include",
         body: JSON.stringify({ 
@@ -304,7 +304,7 @@ const clearBackendTranscript = async () => {
     try {
       await fetch(`/api/backend/update_transcript_section`, {
         method: "POST", 
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${TOKEN_KEY}` },
+        headers: { "Content-Type": "application/json", "X-API-KEY": API_KEY },
         credentials: "include",
         body: JSON.stringify({ meeting_id: meetingId, user_id: user.id, section_key: sectionKey, content, titles })
       });
@@ -355,7 +355,7 @@ const clearBackendTranscript = async () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${TOKEN_KEY}`,
+          "X-API-KEY": API_KEY,
         },
         credentials: "include",
         body: JSON.stringify(payload),

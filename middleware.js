@@ -31,16 +31,19 @@ export async function middleware(req) {
       method: "POST",
       headers: { 
         "Content-Type": "application/json", 
-        "Authorization": `Bearer ${TOKEN_KEY}`,
+        "X-API-KEY": API_KEY,
+        // Also send cookie explicitly to ensure Flask can read it when requests come from middleware
+        "Cookie": `session_id=${sessionId}`
       },
       body: JSON.stringify({ session_id: sessionId }),
     });
 
     if (!res.ok) {
-      console.warn("❌ Session verification failed, redirecting to /login");
-      
-      // ✅ Don't delete cookie here - let backend/refresh handle it
-      // This prevents premature cookie deletion during refresh cycles
+      // Read a short body for diagnostics and avoid blowing up logs
+      const text = await res.text().catch(() => "<no body>");
+      console.warn("❌ Session verification failed, redirecting to /login", { status: res.status, body: text.slice(0,200) });
+
+      // Don't delete cookie here - let backend/refresh handle it
       return NextResponse.redirect(new URL("/login", req.url));
     }
 

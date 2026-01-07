@@ -24,7 +24,7 @@ export default function NewEncounter() {
   const [userId, setUserId] = useState(null);
   const [stats, setStats] = useState({ today: 0, week: 0 });
 
-  const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
+  const API_KEY = process.env.NEXT_PUBLIC_API_KEY || process.env.API_KEY || "";
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -84,7 +84,7 @@ export default function NewEncounter() {
     const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     try {
       const res = await fetch(`/api/backend/stats?user_id=${id}`, {
-        headers: { "Content-Type": "application/json", "X-API-KEY": TOKEN_KEY },
+        headers: { "Content-Type": "application/json", "X-API-KEY": API_KEY},
         credentials: "include"
       });
       if (res.ok) setStats(await res.json());
