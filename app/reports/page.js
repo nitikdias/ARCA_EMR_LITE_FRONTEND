@@ -77,7 +77,7 @@ export default function ReportPage({ user }) {
         const res = await fetch(`/api/backend/meetings?user_id=${userId}`,{
           headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${TOKEN_KEY}`,
+          "X-API-KEY": API_KEY,
         },
         credentials: "include"
         });
@@ -106,7 +106,7 @@ export default function ReportPage({ user }) {
         const res = await fetch(`/api/backend/stats?user_id=${userId}`,{
           headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${TOKEN_KEY}`,
+          "X-API-KEY": API_KEY,
         },
         credentials: "include"
         });
@@ -151,7 +151,7 @@ export default function ReportPage({ user }) {
     try {
       await fetch(`/api/backend/transcripts/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${TOKEN_KEY}` },
+        headers: { "Content-Type": "application/json", "X-API-KEY": API_KEY },
         credentials: "include",
         body: JSON.stringify(editData),
       });
@@ -160,7 +160,7 @@ export default function ReportPage({ user }) {
       // Refresh meetings
       const userId = localStorage.getItem("userId");
       const res = await fetch(`/api/backend/meetings?user_id=${userId}`, {
-        headers: { "Authorization": `Bearer ${TOKEN_KEY}` },
+        headers: { "X-API-KEY": API_KEY },
         credentials: "include"
       });
       const data = await res.json();

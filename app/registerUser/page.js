@@ -12,6 +12,7 @@ export default function Register({ stats }) {
   const [message, setMessage] = useState("");
   const [user, setUser] = useState(null);
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+  const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
 
   //fetch user details
     useEffect(() => {
@@ -56,7 +57,7 @@ export default function Register({ stats }) {
     const res = await fetch(`/api/backend/register`, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${TOKEN_KEY}`,
+        "X-API-KEY": API_KEY,
       },
       credentials: "include",
       body: formData,

@@ -14,7 +14,7 @@ export async function POST(req) {
   try {
     const res = await fetch(`/api/backend/register`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${TOKEN_KEY}` },
+      headers: { "Content-Type": "application/json", "X-API-KEY": API_KEY },
       credentials: "include",
       body: JSON.stringify(body),
     });

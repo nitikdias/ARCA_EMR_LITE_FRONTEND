@@ -14,7 +14,7 @@ export default function useTokenRefresher() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${TOKEN_KEY}`,
+            "X-API-KEY": process.env.NEXT_PUBLIC_API_KEY || "",
           },
           credentials: "include",
           body: JSON.stringify({ refresh_token: refreshToken }),

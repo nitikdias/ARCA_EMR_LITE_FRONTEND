@@ -101,7 +101,7 @@ function SummarySection({ sectionKey, section, onUpdate, onSave, onRemove, canRe
 
             const response = await fetch("/api/whisper/whisper-dictate", {
               method: "POST",
-              headers: { "Authorization": `Bearer ${TOKEN_KEY}` },
+              headers: { "X-API-KEY": API_KEY },
               credentials: "include",
               body: formData,
             });

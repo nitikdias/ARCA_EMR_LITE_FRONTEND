@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 // API routes need server-side env vars (without NEXT_PUBLIC prefix)
 const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
 const TOKEN_KEY = process.env.TOKEN_KEY || process.env.NEXT_PUBLIC_TOKEN_KEY;
+const API_KEY = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY || "";
 
 // Debug: Log env vars on module load (this shows in terminal)
 console.log('🔧 Proxy Login Route Initialized:');
@@ -26,7 +27,7 @@ export async function POST(req) {
 
     const headers = {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${TOKEN_KEY}`,
+      'X-API-KEY': API_KEY,
     };
     
     console.log('📋 Request headers:', { ...headers, Authorization: 'Bearer ***' + TOKEN_KEY.slice(-20) });

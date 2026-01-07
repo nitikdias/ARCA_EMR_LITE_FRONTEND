@@ -52,7 +52,7 @@ async function upload(blob, name, userId) {
 
   const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
   return fetch(`/api/backend/uploadchunk`, {
-    headers: { "Authorization": `Bearer ${TOKEN_KEY}` },
+    headers: { "X-API-KEY": API_KEY },
     credentials: "include",
     method: "POST",
     body: f,
