@@ -30,7 +30,7 @@ const SectionEditor = ({ section = {}, key, sections, setSections }) => {
             const response = await fetch("/api/whisper/whisper-dictate", {
               method: "POST",
               headers: {
-                "X-API-KEY": process.env.NEXT_PUBLIC_API_KEY || "",
+                "X-API-KEY": process.env.NEXT_PUBLIC_API_KEY || process.env.API_KEY || "",
               },
               credentials: "include",
               body: formData
