@@ -18,11 +18,11 @@ export async function POST(req) {
     console.log('📧 Email:', body.email);
     console.log('🔐 Password received:', body.password ? `Yes (length: ${body.password.length})` : 'No - MISSING!');
     console.log('📦 Full body keys:', Object.keys(body));
-    console.log('🔑 TOKEN_KEY available:', TOKEN_KEY ? 'Yes (length: ' + TOKEN_KEY.length + ')' : 'No - MISSING!');
+    console.log('🔑 API_KEY available:', API_KEY ? 'Yes (length: ' + API_KEY.length + ')' : 'No - MISSING!');
     
-    if (!TOKEN_KEY) {
-      console.error('❌ TOKEN_KEY is not set in environment variables!');
-      return NextResponse.json({ error: 'Server configuration error: TOKEN_KEY missing' }, { status: 500 });
+    if (!API_KEY) {
+      console.error('❌ API_KEY is not set in environment variables!');
+      return NextResponse.json({ error: 'Server configuration error: API_KEY missing' }, { status: 500 });
     }
 
     const headers = {
