@@ -15,7 +15,7 @@ const nextConfig = {
           { key: 'Access-Control-Allow-Credentials', value: 'true' },
           { key: 'Access-Control-Allow-Origin', value: '*' },
           { key: 'Access-Control-Allow-Methods', value: 'GET,POST,PUT,DELETE,OPTIONS' },
-          { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization' },
+          { key: 'Access-Control-Allow-Headers', value: 'Content-Type, X-API-KEY' },
         ],
       },
     ];
@@ -30,7 +30,7 @@ const nextConfig = {
       },
       {
         source: '/api/whisper/:path*',
-        destination: 'http://arca-spark-whisper-stt.eastus.azurecontainer.io:5005/:path*',
+        destination: 'https://whisper-stt-fjbfhxeyhwerhuab.z03.azurefd.net/:path*',
       },
     ];
   },
