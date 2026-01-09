@@ -24,7 +24,7 @@ export async function POST(request) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${TOKEN_KEY}`, // ✅ E2E Networks API key
+        'X-API-KEY': API_KEY, // ✅ E2E Networks API key
         'X-Session-ID': sessionId.value, // ✅ Send session_id here as fallback
         'Cookie': `session_id=${sessionId.value}`, // ✅ Also try Cookie header
       },

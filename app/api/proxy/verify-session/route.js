@@ -19,7 +19,7 @@ export async function POST(req) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.TOKEN_KEY || process.env.NEXT_PUBLIC_TOKEN_KEY}`,
+        'X-API-KEY': API_KEY,
       },
       body: JSON.stringify({ session_id: sessionId }),
     });
