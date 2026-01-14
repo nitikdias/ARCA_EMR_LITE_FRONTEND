@@ -10,14 +10,13 @@ export default function useTokenRefresher() {
       if (!refreshToken) return;
 
       try {
-        const res = await fetch(`/api/backend/refresh`, {
+        const res = await fetch(`/api/refresh`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-API-KEY": process.env.API_KEY || "",
+            'X-API-KEY': process.env.NEXT_PUBLIC_API_KEY || "",
           },
           credentials: "include",
-          body: JSON.stringify({ refresh_token: refreshToken }),
         });
 
         if (!res.ok) throw new Error("Failed to refresh token");

@@ -21,13 +21,9 @@ const nextConfig = {
     ];
   },
   
-  // ✅ Proxy backend requests to avoid cross-origin cookie issues
+  // ✅ Proxy whisper requests (backend goes through API route for long timeout support)
   async rewrites() {
     return [
-      {
-        source: '/api/backend/:path*',
-        destination: 'https://emr-lite-core-gkfqhyd6crf4bne6.z03.azurefd.net/:path*',
-      },
       {
         source: '/api/whisper/:path*',
         destination: 'https://whisper-stt-fjbfhxeyhwerhuab.z03.azurefd.net/:path*',

@@ -1,53 +1,100 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function TokenRefreshManager() {
   const router = useRouter();
   const intervalRef = useRef(null);
   const timeoutRef = useRef(null);
-  const failureCountRef = useRef(0); // ✅ Track consecutive failures
+  const failureCountRef = useRef(0);
+  const [isReady, setIsReady] = useState(false);
 
+  // Check for user login periodically
   useEffect(() => {
-    // ✅ Only run on client side
     if (typeof window === 'undefined') return;
 
-    // Helper function to check if session_id cookie exists
-    const hasSessionCookie = () => {
-      return document.cookie.split(';').some(cookie => cookie.trim().startsWith('session_id='));
+    console.log("🔍 TokenRefreshManager mounted - checking for logged in user...");
+
+    const checkUserLogin = () => {
+      const userId = localStorage.getItem("userId");
+      
+      // If userId exists, user is logged in
+      const isLoggedIn = !!userId;
+      
+      console.log(`🔍 Login check: userId=${isLoggedIn ? '✓' : '✗'}, isReady=${isReady}`);
+      
+      if (isLoggedIn && !isReady) {
+        console.log("✅ User logged in detected, starting token refresh manager");
+        setIsReady(true);
+      } else if (!isLoggedIn && isReady) {
+        console.log("⚠️ User logged out, stopping token refresh manager");
+        setIsReady(false);
+      }
     };
 
-    // Check if user is logged in (both userId and session_id cookie must exist)
-    const userId = localStorage.getItem("userId");
-    const hasSession = hasSessionCookie();
-    
-    if (!userId || !hasSession) {
-      console.log("⚠️ No active session (userId or session_id cookie missing), skipping token refresh setup");
+    // Check immediately
+    checkUserLogin();
+
+    // Check every 1 second for login state changes
+    const checkInterval = setInterval(checkUserLogin, 1000);
+
+    return () => {
+      console.log("🧹 TokenRefreshManager login checker cleanup");
+      clearInterval(checkInterval);
+    };
+  }, [isReady]);
+
+  useEffect(() => {
+    if (!isReady) {
+      console.log("⚠️ Token refresh manager waiting for active session...");
       return;
     }
 
-    console.log("🕒 Token refresh manager started - will refresh every 4 minutes");
+    console.log("🕒 Token refresh manager started - will refresh every 50 seconds");
 
     // ✅ Refresh function that doesn't cause re-renders
     const refreshAccessToken = async () => {
+      const timestamp = new Date().toLocaleTimeString();
       try {
-        console.log(`🔄 [${new Date().toLocaleTimeString()}] Refreshing token...`);
+        console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`🔄 [${timestamp}] CALLING /api/refresh endpoint...`);
+        console.log(`   User ID: ${localStorage.getItem("userId")}`);
+        console.log(`   (session_id cookie sent automatically via credentials: 'include')`);
         
         const res = await fetch("/api/refresh", {
           method: "POST",
           credentials: "include",
           headers: {
             "Content-Type": "application/json",
+            'X-API-KEY': process.env.NEXT_PUBLIC_API_KEY || "",
           },
         });
+        
+        console.log(`📡 [${timestamp}] Response received: ${res.status} ${res.statusText}`);
 
         if (!res.ok) {
           failureCountRef.current += 1;
-          const errorData = await res.json();
-          console.error(`❌ Token refresh failed (attempt ${failureCountRef.current}):`, errorData.error);
+          const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
+          console.error(`❌ [${timestamp}] Token refresh FAILED (attempt ${failureCountRef.current}/3)`);
+          console.error(`   Status: ${res.status}`);
+          console.error(`   Error: ${errorData.error}`);
+          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
           
-          // ✅ Only logout after 3 consecutive failures
+          // ✅ If 401 (tokens missing from Redis), logout immediately
+          if (res.status === 401) {
+            console.error("❌ Session expired (tokens not in Redis), logging out immediately...");
+            localStorage.clear();
+            
+            // Clear intervals before redirect
+            if (intervalRef.current) clearInterval(intervalRef.current);
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+            
+            router.push("/login");
+            return false;
+          }
+          
+          // ✅ For other errors, retry up to 3 times
           if (failureCountRef.current >= 3) {
             console.error("❌ 3 consecutive refresh failures, logging out...");
             localStorage.clear();
@@ -70,13 +117,22 @@ export default function TokenRefreshManager() {
         failureCountRef.current = 0;
 
         const data = await res.json();
-        console.log(`✅ [${new Date().toLocaleTimeString()}] Token refreshed successfully`);
-        console.log(`   ⏱️  Next refresh in 4 minutes (token expires in ${data.expires_in}s)`);
+        console.log(`✅ [${timestamp}] Token refreshed successfully!`);
+        console.log(`   Token expires in: ${data.expires_in}s`);
+        console.log(`   Refreshed at: ${data.refreshed_at}`);
+        console.log(`   ⏱️  Next refresh scheduled in: 50 seconds`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
         return true;
         
       } catch (err) {
         failureCountRef.current += 1;
-        console.error(`💥 Error during token refresh (attempt ${failureCountRef.current}):`, err);
+        const timestamp = new Date().toLocaleTimeString();
+        console.error(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.error(`💥 [${timestamp}] NETWORK ERROR during token refresh (attempt ${failureCountRef.current}/3)`);
+        console.error(`   Error type: ${err.name}`);
+        console.error(`   Error message: ${err.message}`);
+        console.error(`   Stack: ${err.stack?.substring(0, 200)}...`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
         
         // ✅ Only logout after 3 consecutive failures
         if (failureCountRef.current >= 3) {
@@ -88,24 +144,36 @@ export default function TokenRefreshManager() {
           
           router.push("/login");
         } else {
-          console.warn(`⚠️ Network error, will retry in 4 minutes (${3 - failureCountRef.current} attempts remaining)`);
+          console.warn(`⚠️ Network error, will retry in 50 seconds (${3 - failureCountRef.current} attempts remaining)`);
         }
         return false;
       }
     };
 
-    // ✅ Initial refresh after 1 minute (to verify everything works)
+    // ✅ Initial refresh after 50 seconds (before token expires at 60s)
     timeoutRef.current = setTimeout(() => {
-      console.log("🚀 Performing initial token refresh...");
+      console.log("\n⏰ ════════════════════════════════════");
+      console.log("🚀 INITIAL TOKEN REFRESH TRIGGERED (after 50s)");
+      console.log("════════════════════════════════════\n");
       refreshAccessToken();
-    }, 60000); // 1 minute
+    }, 50000); // 50 seconds
 
-    // ✅ Set up interval to refresh every 4 minutes (240 seconds)
+    // ✅ Set up interval to refresh every 50 seconds (before 60s token expiry)
     intervalRef.current = setInterval(() => {
+      console.log("\n⏰ ════════════════════════════════════");
+      console.log("🔁 INTERVAL TOKEN REFRESH TRIGGERED (every 50s)");
+      console.log("════════════════════════════════════\n");
       refreshAccessToken();
-    }, 240000); // 240 seconds = 4 minutes
+    }, 50000); // 50 seconds (refresh before 60s expiry)
 
-    console.log("✅ Token refresh intervals set up successfully");
+    console.log("\n┌────────────────────────────────────────────────────┐");
+    console.log("│ ✅ Token Refresh Manager Initialized               │");
+    console.log("│                                                    │");
+    console.log("│ ⏱️  Refresh Interval: Every 50 seconds             │");
+    console.log("│ 🕒 Token Expiry: 60 seconds                        │");
+    console.log("│ 🛡️ Safety Margin: 10 seconds                       │");
+    console.log("│ 📍 First refresh in: 50 seconds                    │");
+    console.log("└────────────────────────────────────────────────────┘\n");
 
     // ✅ Cleanup function - IMPORTANT to prevent memory leaks
     return () => {
@@ -118,7 +186,7 @@ export default function TokenRefreshManager() {
         console.log("🛑 Initial refresh timeout cleared");
       }
     };
-  }, []); // ✅ Empty deps = runs once on mount, never re-runs
+  }, [isReady, router]); // ✅ Re-run when session state changes
 
   // ✅ Return null - this component renders nothing
   return null;

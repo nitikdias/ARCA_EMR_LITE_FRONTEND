@@ -1,8 +1,6 @@
 "use client";
 
-import useTokenRefresher from "./hooks/useTokenRefresher";
-
 export default function ClientLayout({ children }) {
-  useTokenRefresher(); // runs only on the client
+  // Token refresh is now handled by TokenRefreshManager in layout.js
   return <>{children}</>;
 }

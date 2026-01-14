@@ -143,3 +143,127 @@ export const generatePDF = async (sections, transcript) => {
 
   doc.save("ClinicalSummary.pdf");
 };
+
+// Generate PDF for Discharge Summary (uses provided section order)
+export const generateDischargePDF = async (sections, transcript) => {
+  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+  const margin = 36;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const contentWidth = pageWidth - margin * 2;
+  const lineHeight = 1.35;
+  const secHeaderH = 26;
+  const secPadding = 10;
+
+  let y = margin;
+
+  const paginateIfNeeded = (needed, topPad = 0) => {
+    if (y + needed > pageHeight - margin) {
+      doc.addPage();
+      y = margin + topPad;
+    }
+  };
+
+  // Title
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.text("Discharge Summary", pageWidth / 2, margin + 10, { align: "center" });
+  y += 24;
+
+  // Render sections in the order provided by the object
+  Object.keys(sections || {}).forEach((key) => {
+    const section = sections[key];
+    if (!section) return;
+
+    // Section header
+    const headerH = secHeaderH;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+
+    // Content
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(12);
+    doc.setLineHeightFactor(lineHeight);
+    const text = section.content && section.content.trim() ? section.content : "Not specified.";
+    const wrapped = doc.splitTextToSize(text, contentWidth - secPadding * 2);
+    const lines = wrapped.length;
+    const fontSize = 12;
+    const textHeight = (lines * fontSize * lineHeight - fontSize * (lineHeight - 1)) / doc.internal.scaleFactor;
+
+    const contentBoxH = textHeight + secPadding * 2;
+    const blockH = headerH + 8 + contentBoxH;
+
+    paginateIfNeeded(blockH);
+
+    doc.setFillColor(230);
+    doc.roundedRect(margin, y, contentWidth, headerH, 5, 5, "F");
+    doc.setTextColor(33, 37, 51);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.text(section.title || "Section", margin + secPadding, y + headerH - 8);
+    y += headerH + 8;
+
+    doc.setFillColor(245);
+    doc.roundedRect(margin, y, contentWidth, contentBoxH, 5, 5, "F");
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    doc.text(wrapped, margin + secPadding, y + secPadding + 10);
+    y += contentBoxH + 16;
+  });
+
+  // Transcript page
+  doc.addPage();
+  y = margin;
+  const tHeader = "Transcript";
+  const tHeaderH = secHeaderH;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.setFillColor(230);
+  doc.roundedRect(margin, y, contentWidth, tHeaderH, 5, 5, "F");
+  doc.setTextColor(33, 37, 51);
+  doc.text(tHeader, margin + secPadding, y + tHeaderH - 8);
+  y += tHeaderH + 8;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(12);
+  doc.setTextColor(0, 0, 0);
+  doc.setLineHeightFactor(lineHeight);
+
+  const transcriptText = transcript && transcript.trim() ? transcript : "Transcript will appear here...";
+  const tWrapped = doc.splitTextToSize(transcriptText, contentWidth - secPadding * 2);
+  const tLineH = (12 * lineHeight) / doc.internal.scaleFactor;
+
+  let start = 0;
+  while (start < tWrapped.length) {
+    const availableHeight = pageHeight - margin - y - secPadding * 2;
+    const fitLines = Math.max(1, Math.floor(availableHeight / tLineH));
+    const slice = tWrapped.slice(start, start + fitLines);
+    const sliceHeight = slice.length * tLineH + secPadding * 2;
+
+    doc.setFillColor(230, 245, 255);
+    doc.roundedRect(margin, y, contentWidth, sliceHeight, 5, 5, "F");
+    doc.text(slice, margin + secPadding, y + secPadding + 10);
+
+    start += fitLines;
+    y += sliceHeight + 12;
+
+    if (start < tWrapped.length) {
+      doc.addPage();
+      y = margin;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.setFillColor(230);
+      doc.roundedRect(margin, y, contentWidth, tHeaderH, 5, 5, "F");
+      doc.setTextColor(33, 37, 51);
+      doc.text(tHeader + " (cont.)", margin + secPadding, y + tHeaderH - 8);
+      y += tHeaderH + 8;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0);
+      doc.setLineHeightFactor(lineHeight);
+    }
+  }
+
+  doc.save("DischargeSummary.pdf");
+};

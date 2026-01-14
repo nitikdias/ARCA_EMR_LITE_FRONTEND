@@ -1,13 +1,13 @@
 "use client";
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
-import { generatePDF } from '../utils/pdfGenerator'; 
+import { generateDischargePDF } from '../utils/pdfGenerator'; 
 import { useUser } from '@/context/userContext';
 
 const API_KEY = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY || "";
-const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY || "";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
-// --- WAV Conversion Utilities (unchanged) ---
+// --- WAV Conversion Utilities ---
 async function convertWebMToWav(webmBlob) {
   const arrayBuffer = await webmBlob.arrayBuffer();
   const audioContext = new AudioContext();
@@ -66,8 +66,8 @@ function floatTo16BitPCM(output, offset, input) {
   }
 }
 
-// --- Summary Section ---
-function SummarySection({ sectionKey, section, onUpdate, onSave, onRemove, canRemove }) {
+// --- Discharge Section ---
+function DischargeSection({ sectionKey, section, onUpdate, onSave, onRemove, canRemove }) {
   const { user } = useUser();
   const [isDictating, setIsDictating] = useState(false);
   const mediaRecorderRef = React.useRef(null);
@@ -187,11 +187,9 @@ function SummarySection({ sectionKey, section, onUpdate, onSave, onRemove, canRe
           <button
             onClick={async () => {
               if (section.editingContent) {
-                // Save first, then ensure editingContent is turned OFF
                 await onSave(sectionKey, section.content);
                 onUpdate(sectionKey, (prev) => ({ ...prev, editingContent: false }));
               } else {
-                // Enter edit mode
                 onUpdate(sectionKey, (prev) => ({ ...prev, editingContent: true }));
               }
             }}
@@ -252,9 +250,8 @@ function SummarySection({ sectionKey, section, onUpdate, onSave, onRemove, canRe
   );
 }
 
-
-export default function ClinicalSummary({ sections, setSections, saveSectionToDB, transcript }) {
-  const MAX_SECTIONS = 10;
+export default function DischargeSummary({ sections, setSections, saveSectionToDB, transcript }) {
+  const MAX_SECTIONS = 15;
   const [newSectionTitle, setNewSectionTitle] = useState("");
   const [showAddSection, setShowAddSection] = useState(false);
 
@@ -287,7 +284,6 @@ export default function ClinicalSummary({ sections, setSections, saveSectionToDB
       [key]: { ...prev[key], content: cleanedContent, editingContent: false },
     }));
 
-    // ✅ Actually save to database
     await saveSectionToDB(key, cleanedContent);
   };
 
@@ -367,7 +363,7 @@ export default function ClinicalSummary({ sections, setSections, saveSectionToDB
               <img src="/images/copy.png" alt="Copy" className="w-4 h-4" />
             </button>
             <button
-              onClick={() => generatePDF(sections, transcript)}
+              onClick={() => generateDischargePDF(sections, transcript)}
               className="p-2 border border-gray-800 rounded bg-transparent hover:bg-gray-50 transition-colors"
               title="Download as PDF"
             >
@@ -416,7 +412,7 @@ export default function ClinicalSummary({ sections, setSections, saveSectionToDB
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
         {Object.keys(sections).map((key) => (
-          <SummarySection
+          <DischargeSection
             key={key}
             sectionKey={key}
             section={sections[key]}
