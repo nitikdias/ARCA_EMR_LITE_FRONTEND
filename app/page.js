@@ -151,7 +151,7 @@ export default function App() {
 
 
   const {
-    mics, deviceId, setDeviceId, recording, paused, recordingTime,
+    mics, deviceId, setDeviceId, recording, paused, stopping, recordingTime,
     startRec, stopRec, pauseRec, resumeRec
   } = useAudioRecorder();
 
@@ -292,7 +292,7 @@ const clearBackendTranscript = async () => {
       }
     };
     poll();
-    transcriptPollingRef.current = setInterval(poll, 3000);
+    transcriptPollingRef.current = setInterval(poll, 1000);
   };
 
   const stopTranscriptPolling = () => {
@@ -733,7 +733,7 @@ const clearBackendTranscript = async () => {
               user={user}
               userLoading={loading}
               mics={mics} deviceId={deviceId} setDeviceId={setDeviceId}
-              recording={recording} paused={paused} recordingTime={recordingTime}
+              recording={recording} paused={paused} stopping={stopping} recordingTime={recordingTime}
               startRec={handleStartRec} stopRec={handleStopRec} pauseRec={pauseRec} resumeRec={resumeRec}
               transcript={transcript}
               selectedLanguage={selectedLanguage}
