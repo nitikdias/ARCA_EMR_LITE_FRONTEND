@@ -30,12 +30,14 @@ export async function POST(request) {
       );
     }
 
-    // ✅ Forward request to Flask with session_id in Cookie header
+    // ✅ Forward request to Flask with session_id in both Cookie and X-Session-ID headers
+    // Backend checks X-Session-ID as fallback if Cookie header is stripped by proxy
     const response = await fetch(`${API_BASE_URL}/refresh`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-API-KEY': API_KEY,
+        'X-Session-ID': sessionId.value, // ✅ Fallback for proxy environments
         'Cookie': `session_id=${sessionId.value}`,
       },
       credentials: 'include',
@@ -44,6 +46,18 @@ export async function POST(request) {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('❌ Flask refresh failed:', errorText);
+      
+      // ✅ If session is invalid/expired (401), delete the stale cookie
+      if (response.status === 401) {
+        console.log('🗑️ Deleting stale session_id cookie due to 401 from backend');
+        const nextResponse = NextResponse.json(
+          { error: errorText },
+          { status: response.status }
+        );
+        nextResponse.cookies.delete('session_id');
+        return nextResponse;
+      }
+      
       return NextResponse.json(
         { error: errorText },
         { status: response.status }
