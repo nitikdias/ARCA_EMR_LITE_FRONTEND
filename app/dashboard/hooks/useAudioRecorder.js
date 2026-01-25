@@ -5,8 +5,8 @@ import { useUser } from '@/context/userContext';
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 const sampleRate = 48000;
-const recordSec = 3;
-const stepSec = 1 ;
+const recordSec = 6;
+const stepSec = 3 ;
 const recordLen = sampleRate * recordSec;  // 288000 samples
 const stepLen = sampleRate * stepSec;      // 240000 samples
 
