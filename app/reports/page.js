@@ -31,6 +31,7 @@ export default function ReportPage({ user }) {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include"
       });
 
       if (res.ok) {
@@ -38,6 +39,9 @@ export default function ReportPage({ user }) {
         
         // ✅ Clear all localStorage
         localStorage.clear();
+        
+        // ✅ Notify TokenRefreshManager to stop
+        window.dispatchEvent(new Event('userUpdated'));
         console.log("✅ Cleared localStorage");
         
         // ✅ Browser will automatically clear the session_id cookie

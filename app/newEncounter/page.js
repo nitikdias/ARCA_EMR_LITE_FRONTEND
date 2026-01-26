@@ -67,9 +67,17 @@ export default function NewEncounter() {
 
   const handleLogout = async () => {
     try {
-      const res = await fetch("/api/logout", { method: "POST", headers: { "Content-Type": "application/json" } });
+      const res = await fetch("/api/logout", { 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" },
+        credentials: "include"
+      });
       if (res.ok) {
+        // Clear all local storage
         localStorage.clear();
+        // Notify TokenRefreshManager to stop
+        window.dispatchEvent(new Event('userUpdated'));
+        // Redirect to login
         router.push("/login");
         setTimeout(() => (window.location.href = "/login"), 100);
       }

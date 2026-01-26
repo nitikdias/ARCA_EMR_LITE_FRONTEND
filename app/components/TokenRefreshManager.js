@@ -84,6 +84,8 @@ export default function TokenRefreshManager() {
           if (res.status === 401) {
             console.error("❌ Session expired (tokens not in Redis), logging out immediately...");
             localStorage.clear();
+            // Notify UserContext that session expired
+            window.dispatchEvent(new Event('userUpdated'));
             
             // Clear timeout before redirect
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -96,6 +98,8 @@ export default function TokenRefreshManager() {
           if (failureCountRef.current >= 3) {
             console.error("❌ 3 consecutive refresh failures, logging out...");
             localStorage.clear();
+            // Notify UserContext that session expired
+            window.dispatchEvent(new Event('userUpdated'));
             
             // Clear timeout before redirect
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -135,6 +139,8 @@ export default function TokenRefreshManager() {
         if (failureCountRef.current >= 3) {
           console.error("❌ 3 consecutive refresh failures, logging out...");
           localStorage.clear();
+          // Notify UserContext that session expired
+          window.dispatchEvent(new Event('userUpdated'));
           
           if (timeoutRef.current) clearTimeout(timeoutRef.current);
           

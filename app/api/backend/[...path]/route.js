@@ -71,31 +71,18 @@ async function handleRequest(request, context, method) {
     if (method !== 'GET' && request.body) {
       const contentType = request.headers.get('content-type');
       
-      // For FormData (multipart/form-data)
+      // For FormData (multipart/form-data) - stream directly without parsing
       if (contentType?.includes('multipart/form-data')) {
-        const formData = await request.formData();
-        
-        // Check if this FormData contains files
-        let hasFiles = false;
-        for (const [key, value] of formData.entries()) {
-          if (value instanceof File) {
-            hasFiles = true;
-            break;
-          }
-        }
-        
-        if (hasFiles) {
-          // If it has files, forward the FormData as-is
-          // Don't set Content-Type header - let fetch set it with boundary
-          fetchOptions.body = formData;
-        } else {
-          // If no files, convert to URL-encoded for Flask request.form
-          const urlParams = new URLSearchParams();
-          for (const [key, value] of formData.entries()) {
-            urlParams.append(key, value);
-          }
-          fetchOptions.body = urlParams.toString();
-          headers['Content-Type'] = 'application/x-www-form-urlencoded';
+        // ✅ Stream the body directly without parsing - much faster
+        fetchOptions.body = request.body;
+        fetchOptions.duplex = 'half'; // Required for streaming bodies
+        headers['Content-Type'] = contentType; // Forward the original content-type with boundary
+      } else if (contentType?.includes('application/x-www-form-urlencoded')) {
+        // For URL-encoded forms, we need to read and forward
+        const body = await request.text();
+        if (body) {
+          fetchOptions.body = body;
+          headers['Content-Type'] = contentType;
         }
       } else {
         // For JSON and other types, forward as text
