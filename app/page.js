@@ -292,7 +292,7 @@ const clearBackendTranscript = async () => {
       }
     };
     poll();
-    transcriptPollingRef.current = setInterval(poll, 1000);
+    transcriptPollingRef.current = setInterval(poll, 5000);
   };
 
   const stopTranscriptPolling = () => {
