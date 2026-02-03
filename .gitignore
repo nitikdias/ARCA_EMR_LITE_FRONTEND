@@ -42,4 +42,4 @@ next-env.d.ts
 
 public/images/*.json
 
-.env.local
+.env.localazure-frontend.yaml
