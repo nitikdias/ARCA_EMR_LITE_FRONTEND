@@ -8,6 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@ricky0123/vad-web": "^0.0.30",
     "bcryptjs": "^3.0.2",
     "firebase": "^12.4.0",
     "firebase-admin": "^13.5.0",

@@ -420,10 +420,10 @@ export function useAudioRecorder() {
       console.log(`✅ [stopRec] All uploads completed`);
     }
     
-    // Add 2 second delay before final cleanup
-    console.log(`🛑 [stopRec] Waiting 2 seconds before final cleanup...`);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    console.log(`✅ [stopRec] Delay completed, proceeding with cleanup`);
+    // Add 4 second delay for final chunk processing and sequential writes
+    console.log(`🛑 [stopRec] Waiting 4 seconds for final chunk processing...`);
+    await new Promise(resolve => setTimeout(resolve, 4000));
+    console.log(`✅ [stopRec] Processing completed, proceeding with cleanup`);
     
     // Now stop all streams and clean up
     setRecording(false);

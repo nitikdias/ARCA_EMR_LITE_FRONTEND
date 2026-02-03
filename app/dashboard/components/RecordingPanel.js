@@ -70,7 +70,7 @@ export default function RecordingPanel({
   user,
   userLoading,
   // Props from audio hook
-  mics, deviceId, setDeviceId, recording, paused, stopping, recordingTime,
+  mics, deviceId, setDeviceId, recording, paused, recordingTime,
   startRec, stopRec, pauseRec, resumeRec,
   // Props for transcript and other controls
   transcript, selectedLanguage, handleLanguageChange, canRecord,
@@ -133,11 +133,11 @@ export default function RecordingPanel({
                     )
                 ) : (
                     <>
-                    <button onClick={paused ? resumeRec : pauseRec} disabled={stopping} className={`w-full sm:flex-1 py-2.5 sm:py-3 rounded-lg border-2 border-yellow-500 bg-transparent text-black font-semibold text-sm sm:text-base ${stopping ? 'opacity-50 cursor-not-allowed' : 'hover:bg-yellow-50'}`}>
+                    <button onClick={paused ? resumeRec : pauseRec} className="w-full sm:flex-1 py-2.5 sm:py-3 rounded-lg border-2 border-yellow-500 bg-transparent text-black font-semibold text-sm sm:text-base hover:bg-yellow-50">
                         {paused ? "Resume" : "Pause"}
                     </button>
-                    <button onClick={stopRec} disabled={stopping} className={`w-full sm:flex-1 py-2.5 sm:py-3 rounded-lg border-2 border-red-500 bg-transparent text-black font-semibold text-sm sm:text-base ${stopping ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-50'}`}>
-                        {stopping ? "Stopping..." : "Stop Recording"}
+                    <button onClick={stopRec} className="w-full sm:flex-1 py-2.5 sm:py-3 rounded-lg border-2 border-red-500 bg-transparent text-black font-semibold text-sm sm:text-base hover:bg-red-50">
+                        Stop Recording
                     </button>
                     </>
                 )}

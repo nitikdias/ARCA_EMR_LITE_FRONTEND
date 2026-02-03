@@ -7,7 +7,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { useMeeting } from '@/context/meetingContext';
 import { useUser } from "@/context/userContext";
 import { useRecording } from '@/context/recordingContext';
-import { useAudioRecorder } from './dashboard/hooks/useAudioRecorder';
+import { useAudioRecorderVAD } from './dashboard/hooks/useAudioRecorderVAD';
 import Sidebar from './sidebar/page'; 
 import Header from './header/page';
 import RecordingPanel from './dashboard/components/RecordingPanel';
@@ -153,7 +153,7 @@ export default function App() {
   const {
     mics, deviceId, setDeviceId, recording, paused, stopping, recordingTime,
     startRec, stopRec, pauseRec, resumeRec
-  } = useAudioRecorder();
+  } = useAudioRecorderVAD();
 
   const transcriptPollingRef = useRef(null);
 
@@ -292,7 +292,7 @@ const clearBackendTranscript = async () => {
       }
     };
     poll();
-    transcriptPollingRef.current = setInterval(poll, 5000);
+    transcriptPollingRef.current = setInterval(poll, 1000);
   };
 
   const stopTranscriptPolling = () => {
