@@ -66,13 +66,10 @@ function CodePenWaveform({ paused }) {
 
 // --- Main Panel Component ---
 export default function RecordingPanel({
-  // Add user prop
   user,
   userLoading,
-  // Props from audio hook
-  mics, deviceId, setDeviceId, recording, paused, recordingTime,
+  mics, deviceId, setDeviceId, recording, paused, stopping, recordingTime,
   startRec, stopRec, pauseRec, resumeRec,
-  // Props for transcript and other controls
   transcript, selectedLanguage, handleLanguageChange, canRecord,
   readyForSummary, setReadyForSummary, handleGenerateSummary
 }) {
@@ -116,30 +113,37 @@ export default function RecordingPanel({
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
                 {!recording ? (
-                    !readyForSummary ? (
-                    // Update disabled logic and button text
-                    <button 
-                        disabled={userLoading || !canRecord || !user} 
-                        onClick={handleStart} 
-                        className={`w-full py-2.5 sm:py-3 rounded-lg border-2 text-black border-blue-500 bg-transparent font-semibold text-sm sm:text-base ${(userLoading || !canRecord || !user) ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-50"}`}
-                        title={userLoading ? "Loading user..." : (!user ? "User not found" : (!canRecord ? "Start session first to enable recording" : ""))}
-                    >
-                        {userLoading ? "Loading..." : (!canRecord ? "Disabled" : "Start Recording")}
-                    </button>
-                    ) : (
-                    <button onClick={() => { handleGenerateSummary(); setReadyForSummary(false); }} className="w-full py-2.5 sm:py-3 rounded-lg border-2 border-green-500 bg-transparent text-black font-semibold text-sm sm:text-base hover:bg-green-50">
-                        Review Summary
-                    </button>
-                    )
+                  !readyForSummary ? (
+                  <button 
+                    disabled={userLoading || !canRecord || !user || stopping} 
+                    onClick={handleStart} 
+                    className={`w-full py-2.5 sm:py-3 rounded-lg border-2 text-black border-blue-500 bg-transparent font-semibold text-sm sm:text-base ${(userLoading || !canRecord || !user || stopping) ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-50"}`}
+                    title={userLoading ? "Loading user..." : (!user ? "User not found" : (!canRecord ? "Start session first to enable recording" : ""))}
+                  >
+                    {userLoading ? "Loading..." : (!canRecord ? "Disabled" : "Start Recording")}
+                  </button>
+                  ) : (
+                  <button onClick={() => { handleGenerateSummary(); setReadyForSummary(false); }} className="w-full py-2.5 sm:py-3 rounded-lg border-2 border-green-500 bg-transparent text-black font-semibold text-sm sm:text-base hover:bg-green-50" disabled={stopping}>
+                    Review Summary
+                  </button>
+                  )
                 ) : (
-                    <>
-                    <button onClick={paused ? resumeRec : pauseRec} className="w-full sm:flex-1 py-2.5 sm:py-3 rounded-lg border-2 border-yellow-500 bg-transparent text-black font-semibold text-sm sm:text-base hover:bg-yellow-50">
-                        {paused ? "Resume" : "Pause"}
-                    </button>
-                    <button onClick={stopRec} className="w-full sm:flex-1 py-2.5 sm:py-3 rounded-lg border-2 border-red-500 bg-transparent text-black font-semibold text-sm sm:text-base hover:bg-red-50">
-                        Stop Recording
-                    </button>
-                    </>
+                  <>
+                  <button 
+                    onClick={paused ? resumeRec : pauseRec} 
+                    className="w-full sm:flex-1 py-2.5 sm:py-3 rounded-lg border-2 border-yellow-500 bg-transparent text-black font-semibold text-sm sm:text-base hover:bg-yellow-50"
+                    disabled={stopping}
+                  >
+                    {paused ? "Resume" : "Pause"}
+                  </button>
+                  <button 
+                    onClick={stopRec} 
+                    className={`w-full sm:flex-1 py-2.5 sm:py-3 rounded-lg border-2 border-red-500 bg-transparent text-black font-semibold text-sm sm:text-base ${stopping ? "opacity-50 cursor-not-allowed" : "hover:bg-red-50"}`}
+                    disabled={stopping}
+                  >
+                    {stopping ? "Stopping..." : "Stop Recording"}
+                  </button>
+                  </>
                 )}
             </div>
         </div>

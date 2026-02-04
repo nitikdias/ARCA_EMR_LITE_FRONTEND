@@ -699,6 +699,26 @@ const clearBackendTranscript = async () => {
   
   const handleStopRec = async () => {
     await stopRec();
+    // After stopping, trigger a final transcript poll to fetch the last chunk
+    if (user) {
+      const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
+      const formData = new FormData();
+      formData.append("user_id", user.id);
+      try {
+        const res = await fetch(`/api/backend/get_transcript`, { 
+          method: "POST", 
+          body: formData, 
+          headers: { "X-API-KEY": API_KEY },
+          credentials: "include"
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setTranscript(data.transcript || '');
+        }
+      } catch (error) {
+        console.error("Final transcript poll error:", error);
+      }
+    }
     setReadyForSummary(true); 
     setCanRecord(true);
   };

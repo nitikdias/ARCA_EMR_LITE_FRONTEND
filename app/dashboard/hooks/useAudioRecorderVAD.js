@@ -208,13 +208,36 @@ export function useAudioRecorderVAD() {
   const stopRec = async () => {
     if (!vadRef.current) return;
     setStopping(true);
+    // Give a short grace period for VAD to finish segmenting
     await new Promise(r => setTimeout(r, 400));
     vadRef.current.pause();
+
+    // If VAD has a buffer of audio that hasn't been processed (e.g., user stopped while speaking),
+    // manually flush it as a final chunk
+    if (vadRef.current._audioBuffer && vadRef.current._audioBuffer.length > 0) {
+      try {
+        const wav = encodeWAV(vadRef.current._audioBuffer);
+        const name = `chunk_${chunkCounterRef.current++}_final.wav`;
+        const p = upload(wav, name, userIdRef.current).catch(e => console.error(e));
+        uploadPromisesRef.current.push(p);
+        await p;
+        // Remove from promises list
+        uploadPromisesRef.current = uploadPromisesRef.current.filter((x) => x !== p);
+      } catch (e) {
+        console.error("Error uploading final chunk:", e);
+      }
+      // Clear the buffer
+      vadRef.current._audioBuffer = [];
+    }
+
+    // Wait for all uploads to finish
     await Promise.allSettled(uploadPromisesRef.current);
     setRecording(false);
     setPaused(false);
-    setStopping(false);
+    // Keep 'stopping' state for 3 seconds after all uploads are done
     clearInterval(timerRef.current);
+    await new Promise(r => setTimeout(r, 3000));
+    setStopping(false);
   };
 
   return { 
