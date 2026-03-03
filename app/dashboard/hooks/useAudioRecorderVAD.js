@@ -75,6 +75,7 @@ export function useAudioRecorderVAD() {
   const uploadPromisesRef = useRef([]);
   const chunkCounterRef = useRef(1);
   const userIdRef = useRef(user?.id);
+  const deviceIdRef = useRef(deviceId);
   const speakingRef = useRef(false);
 
   const t = () => new Date().toISOString().split("T")[1];
@@ -83,6 +84,12 @@ export function useAudioRecorderVAD() {
     userIdRef.current = user?.id;
   }, [user]);
 
+  useEffect(() => {
+    deviceIdRef.current = deviceId;
+    console.log(`🔵 [MIC-DEBUG] deviceId state changed to: "${deviceId}"`);
+    console.log(`🔵 [MIC-DEBUG] deviceIdRef.current is now: "${deviceIdRef.current}"`);
+  }, [deviceId]);
+
   // Defensive Cleanup Helper
   const safeDestroy = (instance) => {
     if (!instance) return;
@@ -90,7 +97,7 @@ export function useAudioRecorderVAD() {
       // Logic check: MicVAD internals throw if these aren't set yet
       // We access them via getters or standard properties
       const isInitialized = instance.stream && instance.audioContext && instance.processor;
-      
+
       if (isInitialized) {
         instance.destroy();
         console.log(`🧹 [${t()}] VAD instance destroyed successfully.`);
@@ -122,6 +129,31 @@ export function useAudioRecorderVAD() {
           workletURL: "/vad.worklet.bundle.min.js",
           ortConfig: (ort) => { ort.env.wasm.wasmPaths = "/"; },
           startOnLoad: false,
+          getStream: async () => {
+            const id = deviceIdRef.current;
+            console.log(`🟢 [MIC-DEBUG] >>> getStream CALLED <<<`);
+            console.log(`🟢 [MIC-DEBUG] deviceIdRef.current = "${id}"`);
+            const constraints = { audio: { channelCount: 1, echoCancellation: true, autoGainControl: true, noiseSuppression: true } };
+            if (id) constraints.audio.deviceId = { exact: id };
+            console.log(`🟢 [MIC-DEBUG] getUserMedia constraints:`, JSON.stringify(constraints));
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            const track = stream.getAudioTracks()[0];
+            console.log(`🟢 [MIC-DEBUG] getStream GOT device: "${track?.label}" (id: ${track?.getSettings()?.deviceId})`);
+            return stream;
+          },
+          resumeStream: async (_oldStream) => {
+            console.log(`🟡 [MIC-DEBUG] >>> resumeStream CALLED <<<`);
+            _oldStream.getTracks().forEach((t) => t.stop());
+            const id = deviceIdRef.current;
+            console.log(`🟡 [MIC-DEBUG] deviceIdRef.current = "${id}"`);
+            const constraints = { audio: { channelCount: 1, echoCancellation: true, autoGainControl: true, noiseSuppression: true } };
+            if (id) constraints.audio.deviceId = { exact: id };
+            console.log(`🟡 [MIC-DEBUG] getUserMedia constraints:`, JSON.stringify(constraints));
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            const track = stream.getAudioTracks()[0];
+            console.log(`🟡 [MIC-DEBUG] resumeStream GOT device: "${track?.label}" (id: ${track?.getSettings()?.deviceId})`);
+            return stream;
+          },
           onSpeechEnd: (audio) => {
             const wav = encodeWAV(audio);
             const name = `chunk_${chunkCounterRef.current++}.wav`;
@@ -154,17 +186,22 @@ export function useAudioRecorderVAD() {
 
     navigator.mediaDevices.enumerateDevices().then((devices) => {
       const inputs = devices.filter((d) => d.kind === "audioinput");
+      console.log(`🔵 [MIC-DEBUG] Enumerated ${inputs.length} audio inputs:`);
+      inputs.forEach((mic, i) => console.log(`   [${i}] label="${mic.label}" deviceId="${mic.deviceId}"`));
       setMics(inputs);
-      if (inputs[0] && !deviceId) setDeviceId(inputs[0].deviceId);
+      if (inputs[0] && !deviceId) {
+        console.log(`🔵 [MIC-DEBUG] Setting default deviceId to: "${inputs[0].deviceId}" (${inputs[0].label})`);
+        setDeviceId(inputs[0].deviceId);
+      }
     });
 
     return () => {
       isMounted = false;
       console.error = originalError;
-      
+
       const toCleanup = localInstance || vadRef.current;
       safeDestroy(toCleanup);
-      
+
       vadRef.current = null;
       clearInterval(timerRef.current);
     };
@@ -174,6 +211,9 @@ export function useAudioRecorderVAD() {
 
   const startRec = async () => {
     if (!vadRef.current) return;
+    console.log(`🔴 [MIC-DEBUG] >>> startRec CALLED <<<`);
+    console.log(`🔴 [MIC-DEBUG] Current deviceId state: "${deviceId}"`);
+    console.log(`🔴 [MIC-DEBUG] Current deviceIdRef.current: "${deviceIdRef.current}"`);
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });
       if (vadRef.current.audioContext?.state === "suspended") {
@@ -181,12 +221,14 @@ export function useAudioRecorderVAD() {
       }
     } catch (e) { return; }
 
+    console.log(`🔴 [MIC-DEBUG] About to call vadRef.current.start() — this will trigger getStream`);
     chunkCounterRef.current = 1;
     setRecording(true);
     setPaused(false);
     setRecordingTime(0);
     timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000);
     vadRef.current.start();
+    console.log(`🔴 [MIC-DEBUG] vadRef.current.start() called`);
   };
 
   const pauseRec = () => {
@@ -240,17 +282,17 @@ export function useAudioRecorderVAD() {
     setStopping(false);
   };
 
-  return { 
-    mics, 
-    deviceId, 
-    setDeviceId, 
-    recording, 
-    paused, 
-    stopping, 
-    recordingTime, 
-    startRec, 
-    pauseRec, 
-    resumeRec, 
-    stopRec 
+  return {
+    mics,
+    deviceId,
+    setDeviceId,
+    recording,
+    paused,
+    stopping,
+    recordingTime,
+    startRec,
+    pauseRec,
+    resumeRec,
+    stopRec
   };
 }
