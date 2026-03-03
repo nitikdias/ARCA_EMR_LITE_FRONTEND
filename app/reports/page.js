@@ -36,22 +36,22 @@ export default function ReportPage({ user }) {
 
       if (res.ok) {
         console.log("✅ Logout successful");
-        
+
         // ✅ Clear all localStorage
         localStorage.clear();
-        
+
         // ✅ Notify TokenRefreshManager to stop
         window.dispatchEvent(new Event('userUpdated'));
         console.log("✅ Cleared localStorage");
-        
+
         // ✅ Browser will automatically clear the session_id cookie
         // (Next.js set max_age=0 in response)
-        
+
         console.log("🔄 Redirecting to login...");
-        
+
         // ✅ Redirect to login
         router.push("/login");
-        
+
         // ✅ Optional: Force full page reload after a short delay
         setTimeout(() => {
           window.location.href = "/login";
@@ -78,12 +78,12 @@ export default function ReportPage({ user }) {
       const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
 
       try {
-        const res = await fetch(`/api/backend/meetings?user_id=${userId}`,{
+        const res = await fetch(`/api/backend/meetings?user_id=${userId}`, {
           headers: {
-          "Content-Type": "application/json",
-          "X-API-KEY": API_KEY,
-        },
-        credentials: "include"
+            "Content-Type": "application/json",
+            "X-API-KEY": API_KEY,
+          },
+          credentials: "include"
         });
         if (!res.ok) throw new Error("Failed to fetch meetings");
         const data = await res.json();
@@ -107,12 +107,12 @@ export default function ReportPage({ user }) {
       const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
 
       try {
-        const res = await fetch(`/api/backend/stats?user_id=${userId}`,{
+        const res = await fetch(`/api/backend/stats?user_id=${userId}`, {
           headers: {
-          "Content-Type": "application/json",
-          "X-API-KEY": API_KEY,
-        },
-        credentials: "include"
+            "Content-Type": "application/json",
+            "X-API-KEY": API_KEY,
+          },
+          credentials: "include"
         });
         if (res.ok) {
           const data = await res.json();
@@ -150,359 +150,411 @@ export default function ReportPage({ user }) {
     });
   };
 
-  const handleSaveTranscript = async (id) => {
+  // Format date to IST
+  const formatToIST = (dateStr) => {
+    if (!dateStr) return "N/A";
+    try {
+      // Backend returns ISO without timezone (e.g. "2026-03-03T06:51:42")
+      // Append Z to treat as UTC so timezone conversion to IST works correctly
+      let str = String(dateStr);
+      if (!str.endsWith("Z") && !str.includes("+") && !str.includes("-", 10)) {
+        str += "Z";
+      }
+      return new Date(str).toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      }) + " IST";
+    } catch {
+      return new Date(dateStr).toLocaleString();
+    }
+  };
+
+  const handleSaveTranscript = async (transcript) => {
+    // Check if anything actually changed
+    const hasChanges =
+      editData.transcript !== (transcript.transcript || "") ||
+      editData.summary !== (transcript.summary || "");
+
+    if (!hasChanges) {
+      toast.info("No edits to save.");
+      setEditingTranscriptId(null);
+      return;
+    }
+
     const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     try {
-      await fetch(`/api/backend/transcripts/${id}`, {
+      const res = await fetch(`/api/backend/transcripts/${transcript.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", "X-API-KEY": API_KEY },
         credentials: "include",
         body: JSON.stringify(editData),
       });
-      setEditingTranscriptId(null);
 
-      // Refresh meetings
-      const userId = localStorage.getItem("userId");
-      const res = await fetch(`/api/backend/meetings?user_id=${userId}`, {
-        headers: { "X-API-KEY": API_KEY },
-        credentials: "include"
-      });
-      const data = await res.json();
-      setMeetings(data);
-      setFilteredMeetings(data);
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error("Save failed:", res.status, errText);
+        toast.error("Failed to save edits.");
+        return;
+      }
+
+      toast.success("Saved edits successfully!");
+
+      // Update local state FIRST so the view shows new data immediately
+      const updateMeetings = (prevMeetings) =>
+        prevMeetings.map((m) => ({
+          ...m,
+          transcripts: m.transcripts?.map((tr) =>
+            tr.id === transcript.id
+              ? { ...tr, transcript: editData.transcript, summary: editData.summary }
+              : tr
+          ),
+        }));
+
+      setMeetings((prev) => updateMeetings(prev));
+      setFilteredMeetings((prev) => updateMeetings(prev));
+
+      // THEN exit edit mode — view will now show the updated data
+      setEditingTranscriptId(null);
     } catch (err) {
       console.error("Error saving transcript edits:", err);
+      toast.error("Error saving edits. Please try again.");
     }
   };
 
   return (
-  <div className="flex flex-col min-h-screen bg-gray-50">
-    {/* Header */}
-    <Header user={user} handleLogout={handleLogout} />
+    <div className="flex flex-col min-h-screen bg-gray-50">
+      {/* Header */}
+      <Header user={user} handleLogout={handleLogout} />
 
-    <div className="flex flex-col md:flex-row flex-1 pt-16 md:pt-0">
-      {/* Sidebar */}
-      <Sidebar stats={stats} />
+      <div className="flex flex-col md:flex-row flex-1 pt-16 md:pt-0">
+        {/* Sidebar */}
+        <Sidebar stats={stats} />
 
-      {/* Main reports box */}
-      <div className="flex-1 px-4 md:px-6 py-4 md:py-6 overflow-y-auto">
-        <div className="max-w-7xl bg-white shadow-md rounded-lg p-4 sm:p-6 mx-auto text-black">
-          <h1 className="text-center text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">Reports</h1>
+        {/* Main reports box */}
+        <div className="flex-1 px-4 md:px-6 py-4 md:py-6 overflow-y-auto">
+          <div className="max-w-7xl bg-white shadow-md rounded-lg p-4 sm:p-6 mx-auto text-black">
+            <h1 className="text-center text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">Reports</h1>
 
-          {!selectedMeeting && (
-            <input
-              type="text"
-              placeholder="Search patient..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full p-2.5 sm:p-3 border border-gray-300 rounded-lg mb-4 sm:mb-6 text-sm sm:text-base"
-            />
-          )}
+            {!selectedMeeting && (
+              <input
+                type="text"
+                placeholder="Search patient..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full p-2.5 sm:p-3 border border-gray-300 rounded-lg mb-4 sm:mb-6 text-sm sm:text-base"
+              />
+            )}
 
-          {!selectedMeeting && filteredMeetings.length === 0 && (
-            <p className="text-center text-gray-600 text-sm sm:text-base">No reports found.</p>
-          )}
+            {!selectedMeeting && filteredMeetings.length === 0 && (
+              <p className="text-center text-gray-600 text-sm sm:text-base">No reports found.</p>
+            )}
 
-          {/* Meetings List */}
-          {!selectedMeeting &&
-            filteredMeetings.map((meeting) => (
-              <div
-                key={meeting.id}
-                className="border border-gray-300 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4 bg-gray-50 flex flex-col sm:flex-row justify-between sm:items-center gap-3"
-              >
-                <div className="flex-1">
-                  <h3 className="font-semibold text-sm sm:text-base">
-                    Patient: {meeting.patient?.name || "Unknown"}{" "}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-gray-700 mt-1">
-                    <strong>Created At:</strong>{" "}
-                    {new Date(meeting.created_at).toLocaleString()}
-                  </p>
+            {/* Meetings List */}
+            {!selectedMeeting &&
+              filteredMeetings.map((meeting) => (
+                <div
+                  key={meeting.id}
+                  className="border border-gray-300 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4 bg-gray-50 flex flex-col sm:flex-row justify-between sm:items-center gap-3"
+                >
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-sm sm:text-base">
+                      Patient: {meeting.patient?.name || "Unknown"}{" "}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-700 mt-1">
+                      <strong>Created At:</strong>{" "}
+                      {formatToIST(meeting.created_at)}
+                    </p>
+                  </div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => setSelectedMeetingId(meeting.id)}
+                      className="text-white px-4 py-2 rounded hover:bg-[#03405a] transition-colors text-sm sm:text-base"
+                      style={{ backgroundColor: "#012537" }}
+                    >
+                      View
+                    </button>
+                  </div>
                 </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => setSelectedMeetingId(meeting.id)}
-                    className="text-white px-4 py-2 rounded hover:bg-[#03405a] transition-colors text-sm sm:text-base"
-                    style={{ backgroundColor: "#012537" }}
-                  >
-                    View
-                  </button>
-                </div>
-              </div>
-            ))}
+              ))}
 
-          {/* Selected Meeting Details */}
-          {selectedMeeting && (
-            <div className="mt-4 sm:mt-6 w-full bg-gray-100 p-4 sm:p-6 rounded-lg">
-              {/* Back Button */}
-              <button
-                onClick={() => setSelectedMeetingId(null)}
-                className="text-blue-600 hover:underline text-xs sm:text-sm mb-3 sm:mb-4 flex items-center gap-1"
-              >
-                ← Back
-              </button>
+            {/* Selected Meeting Details */}
+            {selectedMeeting && (
+              <div className="mt-4 sm:mt-6 w-full bg-gray-100 p-4 sm:p-6 rounded-lg">
+                {/* Back Button */}
+                <button
+                  onClick={() => setSelectedMeetingId(null)}
+                  className="text-blue-600 hover:underline text-xs sm:text-sm mb-3 sm:mb-4 flex items-center gap-1"
+                >
+                  ← Back
+                </button>
 
-              {/* Patient Info */}
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mt-2">
-                Patient: {selectedMeeting.patient?.name || "Unknown"}{" "}
-                <span className="text-gray-500 text-base sm:text-lg block sm:inline mt-1 sm:mt-0">
-                  (Meeting ID: {selectedMeeting.id})
-                </span>
-              </h2>
+                {/* Patient Info */}
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mt-2">
+                  Patient: {selectedMeeting.patient?.name || "Unknown"}{" "}
+                  <span className="text-gray-500 text-base sm:text-lg block sm:inline mt-1 sm:mt-0">
+                    (Meeting ID: {selectedMeeting.id})
+                  </span>
+                </h2>
 
-              <p className="text-gray-700 mb-3 sm:mb-4 text-xs sm:text-sm">
-                <strong>Created At:</strong> {new Date(selectedMeeting.created_at).toLocaleString()}
-              </p>
+                <p className="text-gray-700 mb-3 sm:mb-4 text-xs sm:text-sm">
+                  <strong>Created At:</strong> {formatToIST(selectedMeeting.created_at)}
+                </p>
 
-              {/* Transcripts */}
-              {selectedMeeting.transcripts && selectedMeeting.transcripts.length > 0 ? (
-                selectedMeeting.transcripts.map((t) => (
-                  <div
-                    key={t.id}
-                    className="w-full bg-white border border-gray-300 rounded-lg p-4 sm:p-6 mt-3 sm:mt-4 flex flex-col space-y-3 sm:space-y-4"
-                  >
-                    {editingTranscriptId === t.id ? (
-                      <div className="flex flex-col space-y-3 sm:space-y-4 flex-1">
-                        {["transcript", "summary"].map((field) => (
-                          <div key={field} className="flex flex-col flex-1">
-                            <label className="font-semibold capitalize mb-1 block text-sm sm:text-base">
-                              {field.replace("_", " ")}:
-                            </label>
-                            <textarea
-                              className="w-full h-32 sm:h-48 border p-2 sm:p-3 rounded resize-none overflow-y-auto text-sm sm:text-base"
-                              value={editData[field]}
-                              onChange={(e) =>
-                                setEditData({ ...editData, [field]: e.target.value })
-                              }
-                            />
-                          </div>
-                        ))}
-
-                        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                          <button
-                            onClick={() => handleSaveTranscript(t.id)}
-                            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-500 transition-colors text-sm sm:text-base w-full sm:w-auto"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={() => setEditingTranscriptId(null)}
-                            className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 transition-colors text-sm sm:text-base w-full sm:w-auto"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col space-y-3 sm:space-y-4 flex-1">
-                        {/* Transcript */}
-                        {t.transcript && (
-                          <div className="flex flex-col flex-1">
-                            <h4 className="font-semibold text-gray-800 mb-2 text-sm sm:text-base">Transcript</h4>
-                            <div className="flex-1 max-h-48 sm:max-h-64 overflow-y-auto p-2 sm:p-3 bg-gray-50 rounded whitespace-pre-wrap text-gray-800 text-xs sm:text-sm">
-                              {t.transcript}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Summary */}
-                        {t.summary && (
-                          <div className="flex flex-col flex-1">
-                            <h4 className="font-semibold text-gray-800 mb-2 text-sm sm:text-base">Summary</h4>
-                            <div className="flex-1 max-h-48 sm:max-h-64 overflow-y-auto p-2 sm:p-3 bg-gray-50 rounded whitespace-pre-wrap text-gray-800 text-xs sm:text-sm">
-                              {t.summary}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Action buttons */}
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {/* Edit */}
-                          <button
-                            onClick={() => handleEditTranscript(t)}
-                            className="p-2 sm:p-2.5 rounded hover:bg-gray-100 flex items-center justify-center border border-gray-200"
-                            title="Edit"
-                          >
-                            <img src="/images/edit.png" alt="Edit" className="w-4 h-4 sm:w-5 sm:h-5" />
-                          </button>
-
-                          {/* Copy */}
-                          <button
-                            onClick={async () => {
-                              try {
-                                const textToCopy = `Transcript:\n${t.transcript || ""}\n\nSummary:\n${t.summary || ""}`;
-                                await navigator.clipboard.writeText(textToCopy);
-                                toast.success("Copied to clipboard!");
-                              } catch (err) {
-                                toast.error("Failed to copy!");
-                              }
-                            }}
-                            className="p-2 sm:p-2.5 rounded hover:bg-gray-100 flex items-center justify-center border border-gray-200"
-                            title="Copy"
-                          >
-                            <img src="/images/copy.png" alt="Copy" className="w-4 h-4 sm:w-5 sm:h-5" />
-                          </button>
-
-                          {/* Download PDF */}
-                          <button
-                            onClick={async () => {
-                              if (!t) return;
-
-                              const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
-                              const margin = 36;
-                              const pageWidth = doc.internal.pageSize.getWidth();
-                              const pageHeight = doc.internal.pageSize.getHeight();
-                              const contentWidth = pageWidth - margin * 2;
-                              const lineHeight = 1.35;
-                              const headerH = 26;
-                              const pad = 10;
-
-                              let y = margin;
-
-                              const paginateIfNeeded = (needed) => {
-                                if (y + needed > pageHeight - margin) {
-                                  doc.addPage();
-                                  y = margin;
+                {/* Transcripts */}
+                {selectedMeeting.transcripts && selectedMeeting.transcripts.length > 0 ? (
+                  selectedMeeting.transcripts.map((t) => (
+                    <div
+                      key={t.id}
+                      className="w-full bg-white border border-gray-300 rounded-lg p-4 sm:p-6 mt-3 sm:mt-4 flex flex-col space-y-3 sm:space-y-4"
+                    >
+                      {editingTranscriptId === t.id ? (
+                        <div className="flex flex-col space-y-3 sm:space-y-4 flex-1">
+                          {["transcript", "summary"].map((field) => (
+                            <div key={field} className="flex flex-col flex-1">
+                              <label className="font-semibold capitalize mb-1 block text-sm sm:text-base">
+                                {field.replace("_", " ")}:
+                              </label>
+                              <textarea
+                                className="w-full h-32 sm:h-48 border p-2 sm:p-3 rounded resize-none overflow-y-auto text-sm sm:text-base"
+                                value={editData[field]}
+                                onChange={(e) =>
+                                  setEditData({ ...editData, [field]: e.target.value })
                                 }
-                              };
+                              />
+                            </div>
+                          ))}
 
-                              const renderTitle = async () => {
-                                const logoImg = new Image();
-                                logoImg.src = "/images/app-logo.png";
-                                await new Promise((r) => (logoImg.onload = r));
-                                const logoW = 40;
-                                const logoH = (logoImg.height / logoImg.width) * logoW;
-                                doc.addImage(logoImg, "PNG", pageWidth - margin - logoW, margin, logoW, logoH);
+                          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                            <button
+                              onClick={() => handleSaveTranscript(t)}
+                              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-500 transition-colors text-sm sm:text-base w-full sm:w-auto"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => setEditingTranscriptId(null)}
+                              className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 transition-colors text-sm sm:text-base w-full sm:w-auto"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col space-y-3 sm:space-y-4 flex-1">
+                          {/* Transcript */}
+                          {t.transcript && (
+                            <div className="flex flex-col flex-1">
+                              <h4 className="font-semibold text-gray-800 mb-2 text-sm sm:text-base">Transcript</h4>
+                              <div className="flex-1 max-h-48 sm:max-h-64 overflow-y-auto p-2 sm:p-3 bg-gray-50 rounded whitespace-pre-wrap text-gray-800 text-xs sm:text-sm">
+                                {t.transcript}
+                              </div>
+                            </div>
+                          )}
 
-                                doc.setFont("helvetica", "bold");
-                                doc.setFontSize(20);
-                                doc.text("Clinical Summary & Transcript", pageWidth / 2, margin + 24, { align: "center" });
-                                doc.setLineWidth(0.5);
-                                doc.setDrawColor(200);
-                                doc.line(margin, margin + 34, pageWidth - margin, margin + 34);
-                                y = margin + 52;
-                              };
+                          {/* Summary */}
+                          {t.summary && (
+                            <div className="flex flex-col flex-1">
+                              <h4 className="font-semibold text-gray-800 mb-2 text-sm sm:text-base">Summary</h4>
+                              <div className="flex-1 max-h-48 sm:max-h-64 overflow-y-auto p-2 sm:p-3 bg-gray-50 rounded whitespace-pre-wrap text-gray-800 text-xs sm:text-sm">
+                                {t.summary}
+                              </div>
+                            </div>
+                          )}
 
-                              const renderSection = (title, text, headColor = [230,230,230], bodyColor = [245,245,245]) => {
-                                if (!text || !String(text).trim()) return;
-                                paginateIfNeeded(headerH + 8 + 40);
+                          {/* Action buttons */}
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {/* Edit */}
+                            <button
+                              onClick={() => handleEditTranscript(t)}
+                              className="p-2 sm:p-2.5 rounded hover:bg-gray-100 flex items-center justify-center border border-gray-200"
+                              title="Edit"
+                            >
+                              <img src="/images/edit.png" alt="Edit" className="w-4 h-4 sm:w-5 sm:h-5" />
+                            </button>
 
-                                // header
-                                doc.setFillColor(...headColor);
-                                doc.roundedRect(margin, y, contentWidth, headerH, 5, 5, "F");
-                                doc.setFont("helvetica", "bold");
-                                doc.setFontSize(13);
-                                doc.setTextColor(33,37,51);
-                                doc.text(title, margin + pad, y + headerH - 8);
-                                y += headerH + 8;
+                            {/* Copy */}
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const textToCopy = `Transcript:\n${t.transcript || ""}\n\nSummary:\n${t.summary || ""}`;
+                                  await navigator.clipboard.writeText(textToCopy);
+                                  toast.success("Copied to clipboard!");
+                                } catch (err) {
+                                  toast.error("Failed to copy!");
+                                }
+                              }}
+                              className="p-2 sm:p-2.5 rounded hover:bg-gray-100 flex items-center justify-center border border-gray-200"
+                              title="Copy"
+                            >
+                              <img src="/images/copy.png" alt="Copy" className="w-4 h-4 sm:w-5 sm:h-5" />
+                            </button>
 
-                                // body
-                                const s = String(text).trim();
-                                doc.setFont("helvetica", "normal");
-                                doc.setFontSize(12);
-                                doc.setTextColor(0,0,0);
-                                doc.setLineHeightFactor(lineHeight);
+                            {/* Download PDF */}
+                            <button
+                              onClick={async () => {
+                                if (!t) return;
 
-                                const wrapped = doc.splitTextToSize(s, contentWidth - pad*2);
-                                const lineH = (12 * lineHeight) / doc.internal.scaleFactor;
-                                const boxH = wrapped.length * lineH + pad * 2;
+                                const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+                                const margin = 36;
+                                const pageWidth = doc.internal.pageSize.getWidth();
+                                const pageHeight = doc.internal.pageSize.getHeight();
+                                const contentWidth = pageWidth - margin * 2;
+                                const lineHeight = 1.35;
+                                const headerH = 26;
+                                const pad = 10;
 
-                                paginateIfNeeded(boxH);
-                                doc.setFillColor(...bodyColor);
-                                doc.roundedRect(margin, y, contentWidth, boxH, 5, 5, "F");
-                                doc.text(wrapped, margin + pad, y + pad + 10);
-                                y += boxH + 14;
-                              };
+                                let y = margin;
 
-                              const renderTranscriptPage = (text) => {
-                                // force new page for transcript start
-                                doc.addPage();
-                                y = margin;
-
-                                // header
-                                doc.setFillColor(230,245,255);
-                                doc.roundedRect(margin, y, contentWidth, headerH, 5, 5, "F");
-                                doc.setFont("helvetica", "bold");
-                                doc.setFontSize(13);
-                                doc.setTextColor(33,37,51);
-                                doc.text("Transcript", margin + pad, y + headerH - 8);
-                                y += headerH + 8;
-
-                                // body streamed across pages
-                                const body = text && String(text).trim() ? String(text).trim() : "Transcript will appear here...";
-                                doc.setFont("helvetica", "normal");
-                                doc.setFontSize(12);
-                                doc.setTextColor(0,0,0);
-                                doc.setLineHeightFactor(lineHeight);
-
-                                const wrapped = doc.splitTextToSize(body, contentWidth - pad*2);
-                                const lineH = (12 * lineHeight) / doc.internal.scaleFactor;
-
-                                let start = 0;
-                                while (start < wrapped.length) {
-                                  const availableH = pageHeight - margin - y - pad * 2;
-                                  const fitLines = Math.max(1, Math.floor(availableH / lineH));
-                                  const slice = wrapped.slice(start, start + fitLines);
-                                  const sliceH = slice.length * lineH + pad * 2;
-
-                                  doc.setFillColor(245,250,255);
-                                  doc.roundedRect(margin, y, contentWidth, sliceH, 5, 5, "F");
-                                  doc.text(slice, margin + pad, y + pad + 10);
-
-                                  start += fitLines;
-                                  y += sliceH + 14;
-
-                                  if (start < wrapped.length) {
+                                const paginateIfNeeded = (needed) => {
+                                  if (y + needed > pageHeight - margin) {
                                     doc.addPage();
                                     y = margin;
-                                    // continuation header
-                                    doc.setFillColor(230,245,255);
-                                    doc.roundedRect(margin, y, contentWidth, headerH, 5, 5, "F");
-                                    doc.setFont("helvetica", "bold");
-                                    doc.setFontSize(13);
-                                    doc.setTextColor(33,37,51);
-                                    doc.text("Transcript (cont.)", margin + pad, y + headerH - 8);
-                                    y += headerH + 8;
-                                    doc.setFont("helvetica", "normal");
-                                    doc.setFontSize(12);
-                                    doc.setTextColor(0,0,0);
-                                    doc.setLineHeightFactor(lineHeight);
                                   }
-                                }
-                              };
+                                };
 
-                              await renderTitle();
+                                const renderTitle = async () => {
+                                  const logoImg = new Image();
+                                  logoImg.src = "/images/app-logo.png";
+                                  await new Promise((r) => (logoImg.onload = r));
+                                  const logoW = 40;
+                                  const logoH = (logoImg.height / logoImg.width) * logoW;
+                                  doc.addImage(logoImg, "PNG", pageWidth - margin - logoW, margin, logoW, logoH);
 
-                              // PAGE 1: Summary section only (if present)
-                              renderSection("Summary", t.summary, [230,230,230], [245,245,245]);
+                                  doc.setFont("helvetica", "bold");
+                                  doc.setFontSize(20);
+                                  doc.text("Clinical Summary & Transcript", pageWidth / 2, margin + 24, { align: "center" });
+                                  doc.setLineWidth(0.5);
+                                  doc.setDrawColor(200);
+                                  doc.line(margin, margin + 34, pageWidth - margin, margin + 34);
+                                  y = margin + 52;
+                                };
 
-                              // PAGE 2+: Transcript always starts on a new page
-                              renderTranscriptPage(t.transcript);
+                                const renderSection = (title, text, headColor = [230, 230, 230], bodyColor = [245, 245, 245]) => {
+                                  if (!text || !String(text).trim()) return;
+                                  paginateIfNeeded(headerH + 8 + 40);
 
-                              doc.save(`report_meeting_${selectedMeeting.id}.pdf`);
-                            }}
-                            className="p-2 sm:p-2.5 rounded hover:bg-gray-100 flex items-center justify-center border border-gray-200"
-                            title="Download PDF"
-                          >
-                            <img src="/images/downloads.png" alt="Save PDF" className="w-4 h-4 sm:w-5 sm:h-5" />
-                          </button>
+                                  // header
+                                  doc.setFillColor(...headColor);
+                                  doc.roundedRect(margin, y, contentWidth, headerH, 5, 5, "F");
+                                  doc.setFont("helvetica", "bold");
+                                  doc.setFontSize(13);
+                                  doc.setTextColor(33, 37, 51);
+                                  doc.text(title, margin + pad, y + headerH - 8);
+                                  y += headerH + 8;
 
+                                  // body
+                                  const s = String(text).trim();
+                                  doc.setFont("helvetica", "normal");
+                                  doc.setFontSize(12);
+                                  doc.setTextColor(0, 0, 0);
+                                  doc.setLineHeightFactor(lineHeight);
+
+                                  const wrapped = doc.splitTextToSize(s, contentWidth - pad * 2);
+                                  const lineH = (12 * lineHeight) / doc.internal.scaleFactor;
+                                  const boxH = wrapped.length * lineH + pad * 2;
+
+                                  paginateIfNeeded(boxH);
+                                  doc.setFillColor(...bodyColor);
+                                  doc.roundedRect(margin, y, contentWidth, boxH, 5, 5, "F");
+                                  doc.text(wrapped, margin + pad, y + pad + 10);
+                                  y += boxH + 14;
+                                };
+
+                                const renderTranscriptPage = (text) => {
+                                  // force new page for transcript start
+                                  doc.addPage();
+                                  y = margin;
+
+                                  // header
+                                  doc.setFillColor(230, 245, 255);
+                                  doc.roundedRect(margin, y, contentWidth, headerH, 5, 5, "F");
+                                  doc.setFont("helvetica", "bold");
+                                  doc.setFontSize(13);
+                                  doc.setTextColor(33, 37, 51);
+                                  doc.text("Transcript", margin + pad, y + headerH - 8);
+                                  y += headerH + 8;
+
+                                  // body streamed across pages
+                                  const body = text && String(text).trim() ? String(text).trim() : "Transcript will appear here...";
+                                  doc.setFont("helvetica", "normal");
+                                  doc.setFontSize(12);
+                                  doc.setTextColor(0, 0, 0);
+                                  doc.setLineHeightFactor(lineHeight);
+
+                                  const wrapped = doc.splitTextToSize(body, contentWidth - pad * 2);
+                                  const lineH = (12 * lineHeight) / doc.internal.scaleFactor;
+
+                                  let start = 0;
+                                  while (start < wrapped.length) {
+                                    const availableH = pageHeight - margin - y - pad * 2;
+                                    const fitLines = Math.max(1, Math.floor(availableH / lineH));
+                                    const slice = wrapped.slice(start, start + fitLines);
+                                    const sliceH = slice.length * lineH + pad * 2;
+
+                                    doc.setFillColor(245, 250, 255);
+                                    doc.roundedRect(margin, y, contentWidth, sliceH, 5, 5, "F");
+                                    doc.text(slice, margin + pad, y + pad + 10);
+
+                                    start += fitLines;
+                                    y += sliceH + 14;
+
+                                    if (start < wrapped.length) {
+                                      doc.addPage();
+                                      y = margin;
+                                      // continuation header
+                                      doc.setFillColor(230, 245, 255);
+                                      doc.roundedRect(margin, y, contentWidth, headerH, 5, 5, "F");
+                                      doc.setFont("helvetica", "bold");
+                                      doc.setFontSize(13);
+                                      doc.setTextColor(33, 37, 51);
+                                      doc.text("Transcript (cont.)", margin + pad, y + headerH - 8);
+                                      y += headerH + 8;
+                                      doc.setFont("helvetica", "normal");
+                                      doc.setFontSize(12);
+                                      doc.setTextColor(0, 0, 0);
+                                      doc.setLineHeightFactor(lineHeight);
+                                    }
+                                  }
+                                };
+
+                                await renderTitle();
+
+                                // PAGE 1: Summary section only (if present)
+                                renderSection("Summary", t.summary, [230, 230, 230], [245, 245, 245]);
+
+                                // PAGE 2+: Transcript always starts on a new page
+                                renderTranscriptPage(t.transcript);
+
+                                doc.save(`report_meeting_${selectedMeeting.id}.pdf`);
+                              }}
+                              className="p-2 sm:p-2.5 rounded hover:bg-gray-100 flex items-center justify-center border border-gray-200"
+                              title="Download PDF"
+                            >
+                              <img src="/images/downloads.png" alt="Save PDF" className="w-4 h-4 sm:w-5 sm:h-5" />
+                            </button>
+
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-600 text-sm sm:text-base">No transcripts available.</p>
-              )}
-            </div>
-          )}
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-600 text-sm sm:text-base">No transcripts available.</p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
 
-    {/* Toast Container */}
-    <ToastContainer position="top-right" autoClose={2000} hideProgressBar />
-  </div>
-);
+      {/* Toast Container */}
+      <ToastContainer position="top-right" autoClose={2000} hideProgressBar />
+    </div>
+  );
 }
