@@ -21,6 +21,7 @@ export default function NewEncounter() {
   const [loading, setLoading] = useState(false);
   const [showNewPatientForm, setShowNewPatientForm] = useState(false);
   const [newPatient, setNewPatient] = useState({ name: "", age: "", gender: "", hospital_id: "" });
+  const [creatingPatient, setCreatingPatient] = useState(false);
   const [userId, setUserId] = useState(null);
   const [stats, setStats] = useState({ today: 0, week: 0 });
 
@@ -67,8 +68,8 @@ export default function NewEncounter() {
 
   const handleLogout = async () => {
     try {
-      const res = await fetch("/api/logout", { 
-        method: "POST", 
+      const res = await fetch("/api/logout", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include"
       });
@@ -92,7 +93,7 @@ export default function NewEncounter() {
     const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     try {
       const res = await fetch(`/api/backend/stats?user_id=${id}`, {
-        headers: { "Content-Type": "application/json", "X-API-KEY": API_KEY},
+        headers: { "Content-Type": "application/json", "X-API-KEY": API_KEY },
         credentials: "include"
       });
       if (res.ok) setStats(await res.json());
@@ -115,7 +116,7 @@ export default function NewEncounter() {
       let url = `/api/backend/patients?user_id=${id}`;
       if (debouncedSearchTerm) url += `&search=${debouncedSearchTerm}`;
 
-      const res = await fetch(url, { 
+      const res = await fetch(url, {
         headers: { "Content-Type": "application/json", "X-API-KEY": API_KEY },
         credentials: "include"
       });
@@ -177,6 +178,32 @@ export default function NewEncounter() {
 
   const handleCreatePatient = async (e) => {
     e.preventDefault();
+    if (creatingPatient) return; // Prevent double-click
+
+    // Validate name
+    if (!newPatient.name.trim()) {
+      toast.error("Patient name is required.");
+      return;
+    }
+
+    // Validate age
+    if (!newPatient.age) {
+      toast.error("Age is required.");
+      return;
+    }
+    const ageNum = Number(newPatient.age);
+    if (isNaN(ageNum) || ageNum < 1 || ageNum > 150 || !Number.isInteger(ageNum)) {
+      toast.error("Please enter a valid age (1-150).");
+      return;
+    }
+
+    // Validate gender
+    if (!newPatient.gender) {
+      toast.error("Gender is required.");
+      return;
+    }
+
+    setCreatingPatient(true);
     const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     try {
       const user_id = localStorage.getItem("userId");
@@ -186,7 +213,7 @@ export default function NewEncounter() {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-API-KEY": API_KEY },
         credentials: "include",
-        body: JSON.stringify({ ...newPatient, age: Number(newPatient.age), user_id })
+        body: JSON.stringify({ ...newPatient, age: newPatient.age ? Number(newPatient.age) : null, user_id })
       });
 
       const data = await res.json();
@@ -199,6 +226,8 @@ export default function NewEncounter() {
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setCreatingPatient(false);
     }
   };
 
@@ -221,7 +250,7 @@ export default function NewEncounter() {
                 placeholder="Search patient..."
                 value={searchTerm}
                 onChange={(e) => { setSearchTerm(e.target.value); setSelectedPatient(null); }}
-                style={{ width: "100%", padding: "12px", border: "1px solid #ccc", borderRadius: "8px", fontSize: "15px",color: "black" }}
+                style={{ width: "100%", padding: "12px", border: "1px solid #ccc", borderRadius: "8px", fontSize: "15px", color: "black" }}
               />
 
               {searchTerm && patients.length > 0 && (
@@ -230,7 +259,7 @@ export default function NewEncounter() {
                     <li
                       key={p.id}
                       onClick={() => { setSelectedPatient(p); setSearchTerm(p.name); }}
-                      style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #eee",color: "black" }}
+                      style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #eee", color: "black" }}
                     >
                       {p.name}
                     </li>
@@ -240,7 +269,7 @@ export default function NewEncounter() {
             </div>
 
             {selectedPatient && (
-              <div style={{ marginBottom: "12px", fontWeight: "500",color: "black" }}>
+              <div style={{ marginBottom: "12px", fontWeight: "500", color: "black" }}>
                 <strong>Selected Patient:</strong> {selectedPatient.name}
               </div>
             )}
@@ -263,8 +292,8 @@ export default function NewEncounter() {
             </div>
 
             {showNewPatientForm && (
-              <form onSubmit={handleCreatePatient} style={{ border: "1px solid #ccc", borderRadius: "8px", padding: "18px", background: "white",color: "black" }}>
-                <h3 style={{ textAlign: "center", marginBottom: "14px", fontWeight: "600",color:"black" }}>Create New Patient</h3>
+              <form onSubmit={handleCreatePatient} style={{ border: "1px solid #ccc", borderRadius: "8px", padding: "18px", background: "white", color: "black" }}>
+                <h3 style={{ textAlign: "center", marginBottom: "14px", fontWeight: "600", color: "black" }}>Create New Patient</h3>
 
                 <label>
                   Name: *
@@ -272,25 +301,51 @@ export default function NewEncounter() {
                     type="text"
                     value={newPatient.name}
                     required
-                    onChange={(e) => setNewPatient({ ...newPatient, name: e.target.value })}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      // Only allow letters, spaces, hyphens, periods, apostrophes
+                      if (val === "" || /^[a-zA-Z\s.'-]+$/.test(val)) {
+                        setNewPatient({ ...newPatient, name: val });
+                      }
+                    }}
+                    placeholder="Example: John doe"
                     style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "6px", border: "1px solid #ccc", color: "black" }}
                   />
                 </label>
 
                 <label>
-                  Age:
+                  Age: *
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     value={newPatient.age}
-                    onChange={(e) => setNewPatient({ ...newPatient, age: e.target.value })}
+                    required
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      // Only allow digits, max 3 characters (up to 150)
+                      if (val === "" || /^\d{1,3}$/.test(val)) {
+                        const num = Number(val);
+                        if (val === "" || num <= 150) {
+                          setNewPatient({ ...newPatient, age: val });
+                        }
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      // Block e, E, +, -, . from being typed
+                      if (["e", "E", "+", "-", "."].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                    placeholder="0-150"
                     style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "6px", border: "1px solid #ccc" }}
                   />
                 </label>
 
                 <label>
-                  Gender:
+                  Gender: *
                   <select
                     value={newPatient.gender}
+                    required
                     onChange={(e) => setNewPatient({ ...newPatient, gender: e.target.value })}
                     style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "6px", border: "1px solid #ccc" }}
                   >
@@ -306,16 +361,24 @@ export default function NewEncounter() {
                   <input
                     type="text"
                     value={newPatient.hospital_id}
-                    onChange={(e) => setNewPatient({ ...newPatient, hospital_id: e.target.value })}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      // Only allow alphanumeric and hyphens
+                      if (val === "" || /^[a-zA-Z0-9-]+$/.test(val)) {
+                        setNewPatient({ ...newPatient, hospital_id: val });
+                      }
+                    }}
+                    placeholder="e.g. HOSP-12345"
                     style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "6px", border: "1px solid #ccc" }}
                   />
                 </label>
 
                 <button
                   type="submit"
-                  style={{ width: "100%", padding: "12px", border: "2px solid #012537", background: "transparent", color: "#012537", borderRadius: "8px", fontSize: "15px" }}
+                  disabled={creatingPatient}
+                  style={{ width: "100%", padding: "12px", border: "2px solid #012537", background: "transparent", color: "#012537", borderRadius: "8px", fontSize: "15px", opacity: creatingPatient ? 0.5 : 1, cursor: creatingPatient ? "not-allowed" : "pointer" }}
                 >
-                  Create Patient
+                  {creatingPatient ? "Creating..." : "Create Patient"}
                 </button>
               </form>
             )}
