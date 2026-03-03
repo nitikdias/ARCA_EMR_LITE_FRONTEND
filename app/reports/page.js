@@ -9,6 +9,15 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useUser } from "@/context/userContext";
 
+// Decode HTML entities like &quot; &amp; &#39; etc.
+const decodeHTML = (str) => {
+  if (!str) return str;
+  const el = typeof document !== "undefined" && document.createElement("textarea");
+  if (!el) return str;
+  el.innerHTML = str;
+  return el.value;
+};
+
 export default function ReportPage({ user }) {
   const router = useRouter();
   const [meetings, setMeetings] = useState([]);
@@ -352,7 +361,7 @@ export default function ReportPage({ user }) {
                             <div className="flex flex-col flex-1">
                               <h4 className="font-semibold text-gray-800 mb-2 text-sm sm:text-base">Transcript</h4>
                               <div className="flex-1 max-h-48 sm:max-h-64 overflow-y-auto p-2 sm:p-3 bg-gray-50 rounded whitespace-pre-wrap text-gray-800 text-xs sm:text-sm">
-                                {t.transcript}
+                                {decodeHTML(t.transcript)}
                               </div>
                             </div>
                           )}
@@ -362,7 +371,7 @@ export default function ReportPage({ user }) {
                             <div className="flex flex-col flex-1">
                               <h4 className="font-semibold text-gray-800 mb-2 text-sm sm:text-base">Summary</h4>
                               <div className="flex-1 max-h-48 sm:max-h-64 overflow-y-auto p-2 sm:p-3 bg-gray-50 rounded whitespace-pre-wrap text-gray-800 text-xs sm:text-sm">
-                                {t.summary}
+                                {decodeHTML(t.summary)}
                               </div>
                             </div>
                           )}
@@ -382,7 +391,7 @@ export default function ReportPage({ user }) {
                             <button
                               onClick={async () => {
                                 try {
-                                  const textToCopy = `Transcript:\n${t.transcript || ""}\n\nSummary:\n${t.summary || ""}`;
+                                  const textToCopy = `Transcript:\n${decodeHTML(t.transcript) || ""}\n\nSummary:\n${decodeHTML(t.summary) || ""}`;
                                   await navigator.clipboard.writeText(textToCopy);
                                   toast.success("Copied to clipboard!");
                                 } catch (err) {
@@ -526,10 +535,10 @@ export default function ReportPage({ user }) {
                                 await renderTitle();
 
                                 // PAGE 1: Summary section only (if present)
-                                renderSection("Summary", t.summary, [230, 230, 230], [245, 245, 245]);
+                                renderSection("Summary", decodeHTML(t.summary), [230, 230, 230], [245, 245, 245]);
 
                                 // PAGE 2+: Transcript always starts on a new page
-                                renderTranscriptPage(t.transcript);
+                                renderTranscriptPage(decodeHTML(t.transcript));
 
                                 doc.save(`report_meeting_${selectedMeeting.id}.pdf`);
                               }}
