@@ -4,10 +4,10 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "../sidebar/page";
 import Header from "../header/page";
-import jsPDF from "jspdf";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useUser } from "@/context/userContext";
+import { generateSummaryOnlyPDF, generateTranscriptOnlyPDF } from "../dashboard/utils/pdfGenerator";
 
 // Decode HTML entities like &quot; &amp; &#39; etc.
 const decodeHTML = (str) => {
@@ -16,6 +16,49 @@ const decodeHTML = (str) => {
   if (!el) return str;
   el.innerHTML = str;
   return el.value;
+};
+
+// Helper to structure flat text summary into sections
+const parseTextToSections = (text) => {
+  if (!text || typeof text !== 'string') return null;
+
+  // Generic regex: Start of line, then 2-60 chars (no colon/newline), then colon.
+  const regex = /(?:^|\n)([a-zA-Z0-9][^:\n]{2,60}):/g;
+  const matches = [];
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    matches.push({
+      index: match.index,
+      title: match[1].trim(),
+      fullMatch: match[0]
+    });
+  }
+
+  if (matches.length === 0) return null;
+
+  const sections = {};
+
+  // Handle any text before the first header (General Summary)
+  const firstHeaderIndex = matches[0].index;
+  if (firstHeaderIndex > 0) {
+    const intro = text.substring(0, firstHeaderIndex).trim();
+    if (intro) {
+      sections["general"] = { title: "Summary", content: intro };
+    }
+  }
+
+  for (let i = 0; i < matches.length; i++) {
+    const start = matches[i].index + matches[i].fullMatch.length;
+    const end = (i + 1 < matches.length) ? matches[i + 1].index : text.length;
+
+    sections[`parsed_${i}`] = {
+      title: matches[i].title,
+      content: text.substring(start, end).trim()
+    };
+  }
+
+  return sections;
 };
 
 export default function ReportPage({ user }) {
@@ -356,29 +399,187 @@ export default function ReportPage({ user }) {
                         </div>
                       ) : (
                         <div className="flex flex-col space-y-3 sm:space-y-4 flex-1">
-                          {/* Transcript */}
+                          {/* Transcript Section */}
                           {t.transcript && (
                             <div className="flex flex-col flex-1">
-                              <h4 className="font-semibold text-gray-800 mb-2 text-sm sm:text-base">Transcript</h4>
+                              <div className="flex items-center justify-between mb-2">
+                                <h4 className="font-semibold text-gray-800 text-sm sm:text-base">Transcript</h4>
+                                <div className="flex items-center gap-1">
+                                  {/* Copy Transcript */}
+                                  <button
+                                    onClick={async () => {
+                                      try {
+                                        await navigator.clipboard.writeText(decodeHTML(t.transcript) || "");
+                                        toast.success("Transcript copied!");
+                                      } catch (err) {
+                                        toast.error("Failed to copy!");
+                                      }
+                                    }}
+                                    className="p-1.5 sm:p-2 rounded hover:bg-gray-100 flex items-center justify-center border border-gray-200"
+                                    title="Copy Transcript"
+                                  >
+                                    <img src="/images/copy.png" alt="Copy" className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                  </button>
+                                  {/* Download Transcript PDF */}
+                                  <button
+                                    onClick={() => generateTranscriptOnlyPDF(t.transcript)}
+                                    className="p-1.5 sm:p-2 rounded hover:bg-gray-100 flex items-center justify-center border border-gray-200"
+                                    title="Download Transcript PDF"
+                                  >
+                                    <img src="/images/downloads.png" alt="Download" className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                  </button>
+                                </div>
+                              </div>
                               <div className="flex-1 max-h-48 sm:max-h-64 overflow-y-auto p-2 sm:p-3 bg-gray-50 rounded whitespace-pre-wrap text-gray-800 text-xs sm:text-sm">
                                 {decodeHTML(t.transcript)}
                               </div>
                             </div>
                           )}
 
-                          {/* Summary */}
-                          {t.summary && (
-                            <div className="flex flex-col flex-1">
-                              <h4 className="font-semibold text-gray-800 mb-2 text-sm sm:text-base">Summary</h4>
-                              <div className="flex-1 max-h-48 sm:max-h-64 overflow-y-auto p-2 sm:p-3 bg-gray-50 rounded whitespace-pre-wrap text-gray-800 text-xs sm:text-sm">
-                                {decodeHTML(t.summary)}
-                              </div>
-                            </div>
-                          )}
+                          {/* Summary Section */}
+                          {t.summary && (() => {
+                            const rawSummary = decodeHTML(t.summary);
+                            let parsedSections = null;
+                            try {
+                              parsedSections = JSON.parse(rawSummary);
+                            } catch (e) {
+                              parsedSections = null;
+                            }
 
-                          {/* Action buttons */}
+                            const isStructured = parsedSections && typeof parsedSections === "object" && !Array.isArray(parsedSections);
+
+                            // Helper: get plain text for copying
+                            const getSummaryText = () => {
+                              if (isStructured) {
+                                return Object.entries(parsedSections).map(([key, content]) => {
+                                  const title = key
+                                    .replace(/_/g, " ")
+                                    .replace(/([a-z])([A-Z])/g, "$1 $2")
+                                    .replace(/\b\w/g, (c) => c.toUpperCase());
+                                  return `${title}:\n${decodeHTML(String(content || "Not specified."))}`;
+                                }).join("\n\n");
+                              }
+                              return decodeHTML(rawSummary);
+                            };
+
+                            // Helper: generate summary-only PDF
+                            const downloadSummaryPDF = async () => {
+                              const keyToTitle = (key) => key
+                                .replace(/_/g, " ")
+                                .replace(/([a-z])([A-Z])/g, "$1 $2")
+                                .replace(/\b\w/g, (c) => c.toUpperCase());
+
+                              let sectionsForPDF = {};
+                              const autoParsed = !isStructured ? parseTextToSections(rawSummary) : null;
+
+                              // Detect if it's a discharge summary
+                              let pdfTitle = "Clinical Summary";
+                              const dischargeKeywords = ["Reason for admission", "Course in the hospital", "Follow up plan", "Diagnosis"];
+
+                              if (isStructured) {
+                                Object.entries(parsedSections).forEach(([key, content]) => {
+                                  const title = keyToTitle(key);
+                                  sectionsForPDF[key] = {
+                                    title: title,
+                                    content: String(content || "")
+                                  };
+                                  if (dischargeKeywords.some(k => title.includes(k))) {
+                                    pdfTitle = "Discharge Summary";
+                                  }
+                                });
+                              } else if (autoParsed) {
+                                sectionsForPDF = autoParsed;
+                                if (Object.values(autoParsed).some(sec => dischargeKeywords.some(k => sec.title.includes(k)))) {
+                                  pdfTitle = "Discharge Summary";
+                                }
+                              } else if (rawSummary && rawSummary.trim()) {
+                                sectionsForPDF["summary"] = {
+                                  title: "Summary",
+                                  content: rawSummary
+                                };
+                              }
+                              await generateSummaryOnlyPDF(sectionsForPDF, pdfTitle);
+                            };
+
+                            return (
+                              <div className="flex flex-col flex-1">
+                                <div className="flex items-center justify-between mb-2">
+                                  <h4 className="font-semibold text-gray-800 text-sm sm:text-base">Summary</h4>
+                                  <div className="flex items-center gap-1">
+                                    {/* Copy Summary */}
+                                    <button
+                                      onClick={async () => {
+                                        try {
+                                          await navigator.clipboard.writeText(getSummaryText());
+                                          toast.success("Summary copied!");
+                                        } catch (err) {
+                                          toast.error("Failed to copy!");
+                                        }
+                                      }}
+                                      className="p-1.5 sm:p-2 rounded hover:bg-gray-100 flex items-center justify-center border border-gray-200"
+                                      title="Copy Summary"
+                                    >
+                                      <img src="/images/copy.png" alt="Copy" className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                    </button>
+                                    {/* Download Summary PDF */}
+                                    <button
+                                      onClick={downloadSummaryPDF}
+                                      className="p-1.5 sm:p-2 rounded hover:bg-gray-100 flex items-center justify-center border border-gray-200"
+                                      title="Download Summary PDF"
+                                    >
+                                      <img src="/images/downloads.png" alt="Download" className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                    </button>
+                                  </div>
+                                </div>
+                                {(() => {
+                                  const autoParsed = !isStructured ? parseTextToSections(rawSummary) : null;
+
+                                  if (isStructured) {
+                                    return (
+                                      <div className="flex flex-col space-y-2">
+                                        {Object.entries(parsedSections).map(([key, content]) => {
+                                          const title = key
+                                            .replace(/_/g, " ")
+                                            .replace(/([a-z])([A-Z])/g, "$1 $2")
+                                            .replace(/\b\w/g, (c) => c.toUpperCase());
+                                          return (
+                                            <div key={key} className="bg-gray-50 rounded p-2 sm:p-3">
+                                              <h5 className="font-semibold text-gray-700 text-xs sm:text-sm mb-1">{title}</h5>
+                                              <div className="whitespace-pre-wrap text-gray-800 text-xs sm:text-sm">
+                                                {decodeHTML(String(content || "Not specified."))}
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    );
+                                  } else if (autoParsed) {
+                                    return (
+                                      <div className="flex flex-col space-y-2">
+                                        {Object.values(autoParsed).map((sec, idx) => (
+                                          <div key={idx} className="bg-gray-50 rounded p-2 sm:p-3">
+                                            <h5 className="font-semibold text-gray-700 text-xs sm:text-sm mb-1">{sec.title}</h5>
+                                            <div className="whitespace-pre-wrap text-gray-800 text-xs sm:text-sm">
+                                              {decodeHTML(sec.content)}
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    );
+                                  } else {
+                                    return (
+                                      <div className="flex-1 max-h-48 sm:max-h-64 overflow-y-auto p-2 sm:p-3 bg-gray-50 rounded whitespace-pre-wrap text-gray-800 text-xs sm:text-sm">
+                                        {rawSummary}
+                                      </div>
+                                    );
+                                  }
+                                })()}
+                              </div>
+                            );
+                          })()}
+
+                          {/* Edit button */}
                           <div className="flex flex-wrap gap-2 mt-2">
-                            {/* Edit */}
                             <button
                               onClick={() => handleEditTranscript(t)}
                               className="p-2 sm:p-2.5 rounded hover:bg-gray-100 flex items-center justify-center border border-gray-200"
@@ -386,168 +587,6 @@ export default function ReportPage({ user }) {
                             >
                               <img src="/images/edit.png" alt="Edit" className="w-4 h-4 sm:w-5 sm:h-5" />
                             </button>
-
-                            {/* Copy */}
-                            <button
-                              onClick={async () => {
-                                try {
-                                  const textToCopy = `Transcript:\n${decodeHTML(t.transcript) || ""}\n\nSummary:\n${decodeHTML(t.summary) || ""}`;
-                                  await navigator.clipboard.writeText(textToCopy);
-                                  toast.success("Copied to clipboard!");
-                                } catch (err) {
-                                  toast.error("Failed to copy!");
-                                }
-                              }}
-                              className="p-2 sm:p-2.5 rounded hover:bg-gray-100 flex items-center justify-center border border-gray-200"
-                              title="Copy"
-                            >
-                              <img src="/images/copy.png" alt="Copy" className="w-4 h-4 sm:w-5 sm:h-5" />
-                            </button>
-
-                            {/* Download PDF */}
-                            <button
-                              onClick={async () => {
-                                if (!t) return;
-
-                                const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
-                                const margin = 36;
-                                const pageWidth = doc.internal.pageSize.getWidth();
-                                const pageHeight = doc.internal.pageSize.getHeight();
-                                const contentWidth = pageWidth - margin * 2;
-                                const lineHeight = 1.35;
-                                const headerH = 26;
-                                const pad = 10;
-
-                                let y = margin;
-
-                                const paginateIfNeeded = (needed) => {
-                                  if (y + needed > pageHeight - margin) {
-                                    doc.addPage();
-                                    y = margin;
-                                  }
-                                };
-
-                                const renderTitle = async () => {
-                                  const logoImg = new Image();
-                                  logoImg.src = "/images/app-logo.png";
-                                  await new Promise((r) => (logoImg.onload = r));
-                                  const logoW = 40;
-                                  const logoH = (logoImg.height / logoImg.width) * logoW;
-                                  doc.addImage(logoImg, "PNG", pageWidth - margin - logoW, margin, logoW, logoH);
-
-                                  doc.setFont("helvetica", "bold");
-                                  doc.setFontSize(20);
-                                  doc.text("Clinical Summary & Transcript", pageWidth / 2, margin + 24, { align: "center" });
-                                  doc.setLineWidth(0.5);
-                                  doc.setDrawColor(200);
-                                  doc.line(margin, margin + 34, pageWidth - margin, margin + 34);
-                                  y = margin + 52;
-                                };
-
-                                const renderSection = (title, text, headColor = [230, 230, 230], bodyColor = [245, 245, 245]) => {
-                                  if (!text || !String(text).trim()) return;
-                                  paginateIfNeeded(headerH + 8 + 40);
-
-                                  // header
-                                  doc.setFillColor(...headColor);
-                                  doc.roundedRect(margin, y, contentWidth, headerH, 5, 5, "F");
-                                  doc.setFont("helvetica", "bold");
-                                  doc.setFontSize(13);
-                                  doc.setTextColor(33, 37, 51);
-                                  doc.text(title, margin + pad, y + headerH - 8);
-                                  y += headerH + 8;
-
-                                  // body
-                                  const s = String(text).trim();
-                                  doc.setFont("helvetica", "normal");
-                                  doc.setFontSize(12);
-                                  doc.setTextColor(0, 0, 0);
-                                  doc.setLineHeightFactor(lineHeight);
-
-                                  const wrapped = doc.splitTextToSize(s, contentWidth - pad * 2);
-                                  const lineH = (12 * lineHeight) / doc.internal.scaleFactor;
-                                  const boxH = wrapped.length * lineH + pad * 2;
-
-                                  paginateIfNeeded(boxH);
-                                  doc.setFillColor(...bodyColor);
-                                  doc.roundedRect(margin, y, contentWidth, boxH, 5, 5, "F");
-                                  doc.text(wrapped, margin + pad, y + pad + 10);
-                                  y += boxH + 14;
-                                };
-
-                                const renderTranscriptPage = (text) => {
-                                  // force new page for transcript start
-                                  doc.addPage();
-                                  y = margin;
-
-                                  // header
-                                  doc.setFillColor(230, 245, 255);
-                                  doc.roundedRect(margin, y, contentWidth, headerH, 5, 5, "F");
-                                  doc.setFont("helvetica", "bold");
-                                  doc.setFontSize(13);
-                                  doc.setTextColor(33, 37, 51);
-                                  doc.text("Transcript", margin + pad, y + headerH - 8);
-                                  y += headerH + 8;
-
-                                  // body streamed across pages
-                                  const body = text && String(text).trim() ? String(text).trim() : "Transcript will appear here...";
-                                  doc.setFont("helvetica", "normal");
-                                  doc.setFontSize(12);
-                                  doc.setTextColor(0, 0, 0);
-                                  doc.setLineHeightFactor(lineHeight);
-
-                                  const wrapped = doc.splitTextToSize(body, contentWidth - pad * 2);
-                                  const lineH = (12 * lineHeight) / doc.internal.scaleFactor;
-
-                                  let start = 0;
-                                  while (start < wrapped.length) {
-                                    const availableH = pageHeight - margin - y - pad * 2;
-                                    const fitLines = Math.max(1, Math.floor(availableH / lineH));
-                                    const slice = wrapped.slice(start, start + fitLines);
-                                    const sliceH = slice.length * lineH + pad * 2;
-
-                                    doc.setFillColor(245, 250, 255);
-                                    doc.roundedRect(margin, y, contentWidth, sliceH, 5, 5, "F");
-                                    doc.text(slice, margin + pad, y + pad + 10);
-
-                                    start += fitLines;
-                                    y += sliceH + 14;
-
-                                    if (start < wrapped.length) {
-                                      doc.addPage();
-                                      y = margin;
-                                      // continuation header
-                                      doc.setFillColor(230, 245, 255);
-                                      doc.roundedRect(margin, y, contentWidth, headerH, 5, 5, "F");
-                                      doc.setFont("helvetica", "bold");
-                                      doc.setFontSize(13);
-                                      doc.setTextColor(33, 37, 51);
-                                      doc.text("Transcript (cont.)", margin + pad, y + headerH - 8);
-                                      y += headerH + 8;
-                                      doc.setFont("helvetica", "normal");
-                                      doc.setFontSize(12);
-                                      doc.setTextColor(0, 0, 0);
-                                      doc.setLineHeightFactor(lineHeight);
-                                    }
-                                  }
-                                };
-
-                                await renderTitle();
-
-                                // PAGE 1: Summary section only (if present)
-                                renderSection("Summary", decodeHTML(t.summary), [230, 230, 230], [245, 245, 245]);
-
-                                // PAGE 2+: Transcript always starts on a new page
-                                renderTranscriptPage(decodeHTML(t.transcript));
-
-                                doc.save(`report_meeting_${selectedMeeting.id}.pdf`);
-                              }}
-                              className="p-2 sm:p-2.5 rounded hover:bg-gray-100 flex items-center justify-center border border-gray-200"
-                              title="Download PDF"
-                            >
-                              <img src="/images/downloads.png" alt="Save PDF" className="w-4 h-4 sm:w-5 sm:h-5" />
-                            </button>
-
                           </div>
                         </div>
                       )}

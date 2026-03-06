@@ -152,17 +152,17 @@ export default function SummarySection({ sectionKey, section, onUpdate, onSave, 
     if (section.editingContent) {
       // Saving mode - first update state to show we're saving
       setIsSaving(true);
-      
+
       try {
         // Wait for save to complete
         await onSave(sectionKey, section.content);
-        
+
         // After successful save, toggle edit mode OFF
         onUpdate(sectionKey, (prev) => ({
           ...prev,
           editingContent: false,
         }));
-        
+
         toast.success("Saved!");
       } catch (error) {
         console.error("Error saving section:", error);
@@ -181,9 +181,9 @@ export default function SummarySection({ sectionKey, section, onUpdate, onSave, 
   };
 
   const handleCopySection = () => {
-    const content = `${section.title}:\n${section.content || 'No content'}`;
+    const content = `${decodeHtml(section.title)}:\n${decodeHtml(section.content || 'No content')}`;
     navigator.clipboard.writeText(content);
-    toast.success(`${section.title} copied!`);
+    toast.success(`${decodeHtml(section.title)} copied!`);
   };
 
   const decodeHtml = (html) => {

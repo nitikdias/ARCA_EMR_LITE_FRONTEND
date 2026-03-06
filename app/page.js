@@ -8,7 +8,7 @@ import { useMeeting } from '@/context/meetingContext';
 import { useUser } from "@/context/userContext";
 import { useRecording } from '@/context/recordingContext';
 import { useAudioRecorderVAD } from './dashboard/hooks/useAudioRecorderVAD';
-import Sidebar from './sidebar/page'; 
+import Sidebar from './sidebar/page';
 import Header from './header/page';
 import RecordingPanel from './dashboard/components/RecordingPanel';
 import SummaryTabs from './dashboard/components/SummaryTabs';
@@ -19,133 +19,134 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 export default function App() {
   const { meetingId } = useMeeting();
   const { canRecord, setCanRecord } = useRecording();
-  const { user, loading } = useUser(); 
-  
+  const { user, loading } = useUser();
+
   // Debug logging
   useEffect(() => {
     console.log("🔍 Debug - User state:", user);
     console.log("🔍 Debug - Loading state:", loading);
     console.log("🔍 Debug - LocalStorage userId:", localStorage.getItem("userId"));
   }, [user, loading]);
-  
+
   const [stats, setStats] = useState({ today: 0, week: 0 });
   const [selectedLanguage, setSelectedLanguage] = useState("en");
   const [transcript, setTranscript] = useState('');
   const [summary, setSummary] = useState('');
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [isSummaryGenerated, setIsSummaryGenerated] = useState(false);
   const [readyForSummary, setReadyForSummary] = useState(false);
   const [activeTab, setActiveTab] = useState('clinical');
   const [sections, setSections] = useState({
-    hpi: { 
-      title: "History of presenting complaints", 
-      content: "", 
-      editingTitle: false, 
-      editingContent: false 
+    hpi: {
+      title: "History of presenting complaints",
+      content: "",
+      editingTitle: false,
+      editingContent: false
     },
-    pmh: { 
-      title: "Past Medical/Surgical History", 
-      content: "", 
-      editingTitle: false, 
-      editingContent: false 
+    pmh: {
+      title: "Past Medical/Surgical History",
+      content: "",
+      editingTitle: false,
+      editingContent: false
     },
-    familyHistory: { 
-      title: "Family History", 
-      content: "", 
-      editingTitle: false, 
-      editingContent: false 
+    familyHistory: {
+      title: "Family History",
+      content: "",
+      editingTitle: false,
+      editingContent: false
     },
-    lifestyle: { 
-      title: "Lifestyle History", 
-      content: "", 
-      editingTitle: false, 
-      editingContent: false 
+    lifestyle: {
+      title: "Lifestyle History",
+      content: "",
+      editingTitle: false,
+      editingContent: false
     },
-    physicalExam: { 
-      title: "Physical Examination", 
-      content: "", 
-      editingTitle: false, 
-      editingContent: false 
+    physicalExam: {
+      title: "Physical Examination",
+      content: "",
+      editingTitle: false,
+      editingContent: false
     },
-    investigations: { 
-      title: "Investigation Summary", 
-      content: "", 
-      editingTitle: false, 
-      editingContent: false 
+    investigations: {
+      title: "Investigation Summary",
+      content: "",
+      editingTitle: false,
+      editingContent: false
     },
-    assessment: { 
-      title: "Assessment and Discussion", 
-      content: "", 
-      editingTitle: false, 
-      editingContent: false 
+    assessment: {
+      title: "Assessment and Discussion",
+      content: "",
+      editingTitle: false,
+      editingContent: false
     },
-    management: { 
-      title: "Management Plan", 
-      content: "", 
-      editingTitle: false, 
-      editingContent: false 
+    management: {
+      title: "Management Plan",
+      content: "",
+      editingTitle: false,
+      editingContent: false
     },
-    prescription: { 
-      title: "Prescription", 
-      content: "", 
-      editingTitle: false, 
-      editingContent: false 
+    prescription: {
+      title: "Prescription",
+      content: "",
+      editingTitle: false,
+      editingContent: false
     },
   });
 
   const [dischargeSections, setDischargeSections] = useState({
-    diagnosis: { 
-      title: "Diagnosis", 
-      content: "", 
-      editingTitle: false, 
-      editingContent: false 
+    diagnosis: {
+      title: "Diagnosis",
+      content: "",
+      editingTitle: false,
+      editingContent: false
     },
-    admission_reason: { 
-      title: "Reason for admission", 
-      content: "", 
-      editingTitle: false, 
-      editingContent: false 
+    admission_reason: {
+      title: "Reason for admission",
+      content: "",
+      editingTitle: false,
+      editingContent: false
     },
-    hpi: { 
-      title: "History of Present Illness", 
-      content: "", 
-      editingTitle: false, 
-      editingContent: false 
+    hpi: {
+      title: "History of Present Illness",
+      content: "",
+      editingTitle: false,
+      editingContent: false
     },
-    past_history: { 
-      title: "Past History", 
-      content: "", 
-      editingTitle: false, 
-      editingContent: false 
+    past_history: {
+      title: "Past History",
+      content: "",
+      editingTitle: false,
+      editingContent: false
     },
-    examination: { 
-      title: "Examination", 
-      content: "", 
-      editingTitle: false, 
-      editingContent: false 
+    examination: {
+      title: "Examination",
+      content: "",
+      editingTitle: false,
+      editingContent: false
     },
-    lab_reports: { 
-      title: "Lab Reports", 
-      content: "", 
-      editingTitle: false, 
-      editingContent: false 
+    lab_reports: {
+      title: "Lab Reports",
+      content: "",
+      editingTitle: false,
+      editingContent: false
     },
-    hospital_course: { 
-      title: "Course in the hospital", 
-      content: "", 
-      editingTitle: false, 
-      editingContent: false 
+    hospital_course: {
+      title: "Course in the hospital",
+      content: "",
+      editingTitle: false,
+      editingContent: false
     },
-    recommendations: { 
-      title: "Recommendations", 
-      content: "", 
-      editingTitle: false, 
-      editingContent: false 
+    recommendations: {
+      title: "Recommendations",
+      content: "",
+      editingTitle: false,
+      editingContent: false
     },
-    followup: { 
-      title: "Follow up plan", 
-      content: "", 
-      editingTitle: false, 
-      editingContent: false 
+    followup: {
+      title: "Follow up plan",
+      content: "",
+      editingTitle: false,
+      editingContent: false
     },
   });
 
@@ -158,108 +159,109 @@ export default function App() {
   const transcriptPollingRef = useRef(null);
 
   // ✅ Call clear endpoint when new encounter starts
-useEffect(() => {
-  console.log("Meeting ID changed:", meetingId);
-  
-  if (meetingId && user) {
-    console.log("🆕 New encounter started - clearing all data");
-    
-    // ✅ Clear backend transcript
-    clearBackendTranscript();
-    
-    // Clear frontend transcript
-    setTranscript("");
-    
-    // Clear content but keep custom titles
-    setSections((prevSections) => {
-      const clearedSections = {};
-      Object.keys(prevSections).forEach((key) => {
-        clearedSections[key] = {
-          title: prevSections[key].title,
-          content: "",
-          editingTitle: false,
-          editingContent: false,
-        };
-      });
-      return clearedSections;
-    });
-    
-    // Reset other states
-    setSummary("");
-    setReadyForSummary(false);
-    
-    // ✅ Reset language to English for new encounter
-    setSelectedLanguage("en");
-    
-    // Also update backend language setting to English
-    if (user?.id) {
-      const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
-      (async () => {
-        try {
-          await fetch(`/api/backend/select_language`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-API-KEY": API_KEY,
-            },
-            credentials: "include",
-            body: JSON.stringify({
-              language_code: "en",
-              user_id: user.id,
-            }),
-          });
-          console.log("✅ Language reset to English for new encounter");
-        } catch (error) {
-          console.error("Error resetting language:", error);
-        }
-      })();
-    }
-    
-    toast.info("New encounter started - ready for recording");
-  }
-}, [meetingId, user]);
+  useEffect(() => {
+    console.log("Meeting ID changed:", meetingId);
 
-// ✅ Add function to clear backend transcript
-const clearBackendTranscript = async () => {
-  if (!user?.id) {
-    console.warn("Cannot clear transcript: No user ID");
-    return;
-  }
-  
-  const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
-  try {
-    // Backend expects form data, not JSON
-    const formData = new FormData();
-    formData.append('user_id', user.id);
-    
-    const response = await fetch(`/api/backend/clear_transcript`, {
-      method: "POST",
-      headers: {
-        "X-API-KEY": API_KEY,
-      },
-      credentials: "include",
-      body: formData,
-    });
-    
-    if (response.ok) {
-      console.log("✅ Backend transcript cleared successfully");
-    } else {
-      const errorText = await response.text();
-      console.error("❌ Failed to clear backend transcript:", errorText);
+    if (meetingId && user) {
+      console.log("🆕 New encounter started - clearing all data");
+
+      // ✅ Clear backend transcript
+      clearBackendTranscript();
+
+      // Clear frontend transcript
+      setTranscript("");
+
+      // Clear content but keep custom titles
+      setSections((prevSections) => {
+        const clearedSections = {};
+        Object.keys(prevSections).forEach((key) => {
+          clearedSections[key] = {
+            title: prevSections[key].title,
+            content: "",
+            editingTitle: false,
+            editingContent: false,
+          };
+        });
+        return clearedSections;
+      });
+
+      // Reset other states
+      setSummary("");
+      setReadyForSummary(false);
+      setIsSummaryGenerated(false); // Reset isSummaryGenerated for new encounter
+
+      // ✅ Reset language to English for new encounter
+      setSelectedLanguage("en");
+
+      // Also update backend language setting to English
+      if (user?.id) {
+        const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
+        (async () => {
+          try {
+            await fetch(`/api/backend/select_language`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-API-KEY": API_KEY,
+              },
+              credentials: "include",
+              body: JSON.stringify({
+                language_code: "en",
+                user_id: user.id,
+              }),
+            });
+            console.log("✅ Language reset to English for new encounter");
+          } catch (error) {
+            console.error("Error resetting language:", error);
+          }
+        })();
+      }
+
+      toast.info("New encounter started - ready for recording");
     }
-  } catch (error) {
-    console.error("Error clearing backend transcript:", error);
-  }
-};
+  }, [meetingId, user]);
+
+  // ✅ Add function to clear backend transcript
+  const clearBackendTranscript = async () => {
+    if (!user?.id) {
+      console.warn("Cannot clear transcript: No user ID");
+      return;
+    }
+
+    const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
+    try {
+      // Backend expects form data, not JSON
+      const formData = new FormData();
+      formData.append('user_id', user.id);
+
+      const response = await fetch(`/api/backend/clear_transcript`, {
+        method: "POST",
+        headers: {
+          "X-API-KEY": API_KEY,
+        },
+        credentials: "include",
+        body: formData,
+      });
+
+      if (response.ok) {
+        console.log("✅ Backend transcript cleared successfully");
+      } else {
+        const errorText = await response.text();
+        console.error("❌ Failed to clear backend transcript:", errorText);
+      }
+    } catch (error) {
+      console.error("Error clearing backend transcript:", error);
+    }
+  };
 
 
   // --- Fetch Stats ---
   useEffect(() => {
-    if (!user) return; 
+    if (!user) return;
     async function fetchStats() {
       const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
       try {
-        const res = await fetch(`/api/backend/stats?user_id=${user.id}`, { 
+        const res = await fetch(`/api/backend/stats?user_id=${user.id}`, {
           headers: { "X-API-KEY": API_KEY },
           credentials: "include"
         });
@@ -277,9 +279,9 @@ const clearBackendTranscript = async () => {
       const formData = new FormData();
       formData.append("user_id", user.id);
       try {
-        const res = await fetch(`/api/backend/get_transcript`, { 
-          method: "POST", 
-          body: formData, 
+        const res = await fetch(`/api/backend/get_transcript`, {
+          method: "POST",
+          body: formData,
           headers: { "X-API-KEY": API_KEY },
           credentials: "include"
         });
@@ -300,7 +302,7 @@ const clearBackendTranscript = async () => {
   };
 
   useEffect(() => {
-    if (recording && !paused && user) { 
+    if (recording && !paused && user) {
       startTranscriptPolling();
     } else {
       stopTranscriptPolling();
@@ -312,28 +314,28 @@ const clearBackendTranscript = async () => {
   const handleLanguageChange = async (e) => {
     const lang = e.target.value;
     setSelectedLanguage(lang);
-    
+
     if (!user?.id) {
       console.error("Cannot set language: No user ID");
       toast.error("Please log in to change language");
       return;
     }
-    
+
     const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     try {
       const response = await fetch(`/api/backend/select_language`, {
-        method: "POST", 
-        headers: { 
-          "Content-Type": "application/json", 
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
           "X-API-KEY": API_KEY
         },
         credentials: "include",
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           language_code: lang,
           user_id: user.id  // ✅ Add user_id
         })
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         console.log("✅ Language set:", data);
@@ -343,12 +345,12 @@ const clearBackendTranscript = async () => {
         console.error("❌ Failed to set language:", error);
         toast.error("Failed to change language");
       }
-    } catch (error) { 
+    } catch (error) {
       console.error("Error setting language:", error);
       toast.error("Error changing language");
     }
   };
-  
+
   // --- Save Section ---
   const saveSectionToDB = async (sectionKey, content) => {
     if (!meetingId) return;
@@ -362,7 +364,7 @@ const clearBackendTranscript = async () => {
     const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     try {
       await fetch(`/api/backend/update_transcript_section`, {
-        method: "POST", 
+        method: "POST",
         headers: { "Content-Type": "application/json", "X-API-KEY": API_KEY },
         credentials: "include",
         body: JSON.stringify({ meeting_id: meetingId, user_id: user.id, section_key: sectionKey, content, titles })
@@ -381,7 +383,7 @@ const clearBackendTranscript = async () => {
     }
     try {
       await fetch(`/api/backend/update_transcript_section`, {
-        method: "POST", 
+        method: "POST",
         headers: { "Content-Type": "application/json", "X-API-KEY": API_KEY },
         credentials: "include",
         body: JSON.stringify({ meeting_id: meetingId, user_id: user.id, section_key: sectionKey, content, titles })
@@ -389,7 +391,7 @@ const clearBackendTranscript = async () => {
     } catch (err) { console.error("Error saving discharge section:", err); }
   };
 
-// --- Generate Discharge Summary ---
+  // --- Generate Discharge Summary ---
   const generateDischargeSummary = async () => {
     if (!meetingId) {
       toast.error("No active meeting.");
@@ -436,13 +438,13 @@ const clearBackendTranscript = async () => {
       });
 
       const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
-      
+
       toast.info("Generating discharge summary... This may take up to 2 minutes.", { autoClose: 5000 });
-      
+
       try {
         console.log("🚀 Sending request to /api/backend/generate_discharge_summary");
         console.log("⏰ Request started at:", new Date().toISOString());
-        
+
         const res = await fetch(`/api/backend/generate_discharge_summary`, {
           method: "POST",
           headers: {
@@ -498,6 +500,8 @@ const clearBackendTranscript = async () => {
         });
 
         setDischargeSections(updatedDischargeSections);
+        setIsSummaryGenerated(true);
+        setIsGeneratingSummary(false); // ✅ Show "Generated" instantly
         toast.success("Discharge summary loaded into sections!");
 
         // Auto-save to database
@@ -516,10 +520,10 @@ const clearBackendTranscript = async () => {
         });
         console.log("🔍 Checking if summary was saved to database...");
         toast.info("Connection interrupted. Checking database...", { autoClose: 3000 });
-        
+
         // Wait for backend to finish saving
         await new Promise(resolve => setTimeout(resolve, 5000));
-        
+
         // Try to fetch the successfully saved summary from database
         try {
           console.log("🔍 Fetching from database fallback endpoint...");
@@ -528,12 +532,12 @@ const clearBackendTranscript = async () => {
             headers: { "X-API-Key": API_KEY },
             credentials: "include",
           });
-          
+
           console.log("📡 Database fallback response:", {
             status: dbRes.status,
             ok: dbRes.ok
           });
-          
+
           if (dbRes.ok) {
             const dbData = await dbRes.json();
             console.log("✅ Database data retrieved:", {
@@ -548,14 +552,16 @@ const clearBackendTranscript = async () => {
                 }
               });
               setDischargeSections(updatedDischargeSections);
+              setIsSummaryGenerated(true);
+              setIsGeneratingSummary(false); // ✅ Show "Generated" instantly
               toast.success("✅ Discharge summary loaded from database!");
               return; // Success!
             }
           }
-          
+
           // If we get here, summary not found in database
           toast.error("Summary generation may still be in progress. Please check Reports page.");
-          
+
         } catch (dbError) {
           console.error("Error fetching from database:", dbError);
           toast.warning("Please refresh or check the Reports page for your discharge summary.");
@@ -570,7 +576,7 @@ const clearBackendTranscript = async () => {
     }
   };
 
-// --- Generate Clinical Summary ---
+  // --- Generate Clinical Summary ---
   const generateSummary = async () => {
     if (!meetingId) {
       toast.error("No active meeting.");
@@ -645,6 +651,8 @@ const clearBackendTranscript = async () => {
       });
 
       setSections(updatedSections);
+      setIsSummaryGenerated(true);
+      setIsGeneratingSummary(false); // ✅ Show "Generated" instantly
       toast.success("Summary loaded into sections!");
 
       // Auto-save to database
@@ -664,39 +672,39 @@ const clearBackendTranscript = async () => {
 
 
   // --- Logout ---
- const handleLogout = async () => {
-  try {
-    const res = await fetch("/api/logout", {  // ✅ Use Next.js API route
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include",  // ✅ Include cookies
-    });
+  const handleLogout = async () => {
+    try {
+      const res = await fetch("/api/logout", {  // ✅ Use Next.js API route
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",  // ✅ Include cookies
+      });
 
-    if (res.ok) {
-      localStorage.clear();
-      // ✅ Notify UserContext that user has been cleared
-      window.dispatchEvent(new Event('userUpdated'));
-      window.location.href = "/login";
-    } else {
-      const errorData = await res.json();
-      console.error("❌ Logout failed:", errorData);
-      toast.error("Logout failed");
+      if (res.ok) {
+        localStorage.clear();
+        // ✅ Notify UserContext that user has been cleared
+        window.dispatchEvent(new Event('userUpdated'));
+        window.location.href = "/login";
+      } else {
+        const errorData = await res.json();
+        console.error("❌ Logout failed:", errorData);
+        toast.error("Logout failed");
+      }
+    } catch (err) {
+      console.error("Error during logout:", err);
+      toast.error("Logout error");
     }
-  } catch (err) {
-    console.error("Error during logout:", err);
-    toast.error("Logout error");
-  }
-};
+  };
 
 
   // --- Recording Controls ---
   const handleStartRec = () => {
     startRec();
-    setCanRecord(true); 
+    setCanRecord(true);
   };
-  
+
   const handleStopRec = async () => {
     await stopRec();
     // After stopping, trigger a final transcript poll to fetch the last chunk
@@ -705,9 +713,9 @@ const clearBackendTranscript = async () => {
       const formData = new FormData();
       formData.append("user_id", user.id);
       try {
-        const res = await fetch(`/api/backend/get_transcript`, { 
-          method: "POST", 
-          body: formData, 
+        const res = await fetch(`/api/backend/get_transcript`, {
+          method: "POST",
+          body: formData,
           headers: { "X-API-KEY": API_KEY },
           credentials: "include"
         });
@@ -719,10 +727,10 @@ const clearBackendTranscript = async () => {
         console.error("Final transcript poll error:", error);
       }
     }
-    setReadyForSummary(true); 
+    setReadyForSummary(true);
     setCanRecord(true);
   };
-  
+
   const handleGenerateSummary = () => {
     if (activeTab === 'clinical') {
       generateSummary();
@@ -744,7 +752,7 @@ const clearBackendTranscript = async () => {
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
       <ToastContainer position="top-right" autoClose={2000} hideProgressBar />
-      <Header user={user} handleLogout={handleLogout} /> 
+      <Header user={user} handleLogout={handleLogout} />
       <div className="flex flex-col md:flex-row">
         <Sidebar stats={stats} />
         <div className="flex-1 p-4 sm:p-6 pt-20 md:pt-6">
@@ -762,6 +770,8 @@ const clearBackendTranscript = async () => {
               readyForSummary={readyForSummary}
               setReadyForSummary={setReadyForSummary}
               handleGenerateSummary={handleGenerateSummary}
+              isGeneratingSummary={isGeneratingSummary}
+              isSummaryGenerated={isSummaryGenerated}
             />
             <SummaryTabs
               sections={sections}

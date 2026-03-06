@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
-import { generateDischargePDF } from '../utils/pdfGenerator'; 
+import { generateDischargePDF } from '../utils/pdfGenerator';
 import { useUser } from '@/context/userContext';
 
 const API_KEY = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY || "";
@@ -145,9 +145,9 @@ function DischargeSection({ sectionKey, section, onUpdate, onSave, onRemove, can
   };
 
   const handleCopySection = () => {
-    const content = `${section.title}:\n${section.content || 'No content'}`;
+    const content = `${decodeHtml(section.title)}:\n${decodeHtml(section.content || 'No content')}`;
     navigator.clipboard.writeText(content);
-    toast.success(`${section.title} copied to clipboard!`);
+    toast.success(`${decodeHtml(section.title)} copied to clipboard!`);
   };
 
   const decodeHtml = (html) => {
@@ -267,7 +267,7 @@ export default function DischargeSummary({ sections, setSections, saveSectionToD
       .split("\n")
       .map((line) => line.trim())
       .filter(Boolean);
-    
+
     const uniqueLines = Array.from(
       new Set(lines.map((line) => line.replace(/^[-•\s]+/, "").trim().toLowerCase()))
     ).map((normalized) => {
@@ -276,7 +276,7 @@ export default function DischargeSummary({ sections, setSections, saveSectionToD
       );
       return original.startsWith("-") ? original : `- ${original}`;
     });
-    
+
     const cleanedContent = uniqueLines.join("\n");
 
     setSections((prev) => ({
@@ -324,14 +324,20 @@ export default function DischargeSummary({ sections, setSections, saveSectionToD
     toast.success("Section removed");
   };
 
+  const decodeHtml = (html) => {
+    if (!html) return html;
+    const txt = document.createElement("textarea");
+    txt.innerHTML = html;
+    return txt.value;
+  };
+
   const handleCopyToClipboard = () => {
     let content = "";
     Object.values(sections).forEach((sec) => {
-      if (sec?.content) content += `${sec.title}:\n${sec.content}\n\n`;
+      if (sec?.content) content += `${decodeHtml(sec.title)}:\n${decodeHtml(sec.content)}\n\n`;
     });
-    content += transcript ? `Transcript:\n${transcript}` : "";
-    navigator.clipboard.writeText(content);
-    toast.success("Copied to clipboard!");
+    navigator.clipboard.writeText(content.trim());
+    toast.success("Summary copied to clipboard!");
   };
 
   const sectionCount = Object.keys(sections).length;
@@ -358,14 +364,14 @@ export default function DischargeSummary({ sections, setSections, saveSectionToD
             <button
               onClick={handleCopyToClipboard}
               className="p-2 border border-gray-800 rounded bg-transparent hover:bg-gray-50 transition-colors"
-              title="Copy all to clipboard"
+              title="Copy summary to clipboard"
             >
               <img src="/images/copy.png" alt="Copy" className="w-4 h-4" />
             </button>
             <button
-              onClick={() => generateDischargePDF(sections, transcript)}
+              onClick={() => generateDischargePDF(sections)}
               className="p-2 border border-gray-800 rounded bg-transparent hover:bg-gray-50 transition-colors"
-              title="Download as PDF"
+              title="Download summary as PDF"
             >
               <img src="/images/downloads.png" alt="Save PDF" className="w-4 h-4" />
             </button>
