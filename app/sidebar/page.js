@@ -123,93 +123,93 @@ export default function Sidebar({ stats }) {
         </button>
 
         {/* --- Top Section (Buttons) --- */}
-<div
-  style={{
-    display: "flex",
-    flexDirection: "column",
-    gap: "12px",
-    alignItems: "center",
-  }}
->
-  {/* New Encounter */}
-  <button
-    onClick={() => router.push("/newEncounter")}
-    style={{
-      ...buttonStyle("/newEncounter"),
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "3px",
-      gap: "1px",
-      border: "none",
-    }}
-  >
-    <img
-      src="/images/new-document.png"
-      alt="New Encounter"
-      style={{
-        width: "24px",
-        height: "24px",
-        filter: pathname === "/newEncounter" ? "invert(100%)" : "invert(0%)",
-      }}
-    />
-    <span style={{ fontSize: "8px", fontWeight: "800" }}>New Encounter</span>
-  </button>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+            alignItems: "center",
+          }}
+        >
+          {/* New Encounter */}
+          <button
+            onClick={() => router.push("/newEncounter")}
+            style={{
+              ...buttonStyle("/newEncounter"),
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "3px",
+              gap: "1px",
+              border: "none",
+            }}
+          >
+            <img
+              src="/images/new-document.png"
+              alt="New Encounter"
+              style={{
+                width: "24px",
+                height: "24px",
+                filter: pathname === "/newEncounter" ? "invert(100%)" : "invert(0%)",
+              }}
+            />
+            <span style={{ fontSize: "8px", fontWeight: "800" }}>New Encounter</span>
+          </button>
 
-  {/* Home */}
-  <button
-    onClick={() => router.push("/")}
-    style={{
-      ...buttonStyle("/"),
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "3px",
-      gap: "1px",
-      border: "none",
-    }}
-  >
-    <img
-      src="/images/home.png"
-      alt="Home"
-      style={{
-        width: "24px",
-        height: "24px",
-        filter: pathname === "/" ? "invert(100%)" : "invert(0%)",
-      }}
-    />
-    <span style={{ fontSize: "12px", fontWeight: "500" }}>Home</span>
-  </button>
+          {/* Home */}
+          <button
+            onClick={() => router.push("/")}
+            style={{
+              ...buttonStyle("/"),
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "3px",
+              gap: "1px",
+              border: "none",
+            }}
+          >
+            <img
+              src="/images/home.png"
+              alt="Home"
+              style={{
+                width: "24px",
+                height: "24px",
+                filter: pathname === "/" ? "invert(100%)" : "invert(0%)",
+              }}
+            />
+            <span style={{ fontSize: "12px", fontWeight: "500" }}>Home</span>
+          </button>
 
-  {/* Reports */}
-  <button
-    onClick={() => router.push("/reports")}
-    style={{
-      ...buttonStyle("/reports"),
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "3px",
-      gap: "1px",
-      border: "none",
-    }}
-  >
-    <img
-      src="/images/file.png"
-      alt="Reports"
-      style={{
-        width: "24px",
-        height: "24px",
-        filter: pathname === "/reports" ? "invert(100%)" : "invert(0%)",
-      }}
-    />
-    <span style={{ fontSize: "12px", fontWeight: "500" }}>Reports</span>
-  </button>
+          {/* Reports */}
+          <button
+            onClick={() => router.push("/reports")}
+            style={{
+              ...buttonStyle("/reports"),
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "3px",
+              gap: "1px",
+              border: "none",
+            }}
+          >
+            <img
+              src="/images/file.png"
+              alt="Reports"
+              style={{
+                width: "24px",
+                height: "24px",
+                filter: pathname === "/reports" ? "invert(100%)" : "invert(0%)",
+              }}
+            />
+            <span style={{ fontSize: "12px", fontWeight: "500" }}>Reports</span>
+          </button>
 
-  {/* Register Button */}
+          {/* Register Button
     <button
       onClick={() => router.push("/registerUser")}
       style={{
@@ -233,9 +233,9 @@ export default function Sidebar({ stats }) {
         }}
       />
       <span style={{ fontSize: "12px", fontWeight: "500" }}>Register</span>
-    </button>
+    </button> */}
 
-</div>
+        </div>
 
 
 

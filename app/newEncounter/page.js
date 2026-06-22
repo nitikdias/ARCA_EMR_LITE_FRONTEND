@@ -20,7 +20,7 @@ export default function NewEncounter() {
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showNewPatientForm, setShowNewPatientForm] = useState(false);
-  const [newPatient, setNewPatient] = useState({ name: "", age: "", gender: "", hospital_id: "" });
+  const [newPatient, setNewPatient] = useState({ name: "", dob: "", gender: "", hospital_id: "" });
   const [creatingPatient, setCreatingPatient] = useState(false);
   const [userId, setUserId] = useState(null);
   const [stats, setStats] = useState({ today: 0, week: 0 });
@@ -186,14 +186,18 @@ export default function NewEncounter() {
       return;
     }
 
-    // Validate age
-    if (!newPatient.age) {
-      toast.error("Age is required.");
+    // Validate DOB
+    if (!newPatient.dob) {
+      toast.error("Date of Birth is required.");
       return;
     }
-    const ageNum = Number(newPatient.age);
-    if (isNaN(ageNum) || ageNum < 1 || ageNum > 150 || !Number.isInteger(ageNum)) {
-      toast.error("Please enter a valid age (1-150).");
+    const dobDate = new Date(newPatient.dob);
+    if (isNaN(dobDate.getTime())) {
+      toast.error("Please enter a valid Date of Birth.");
+      return;
+    }
+    if (dobDate > new Date()) {
+      toast.error("Date of Birth cannot be in the future.");
       return;
     }
 
@@ -213,7 +217,7 @@ export default function NewEncounter() {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-API-KEY": API_KEY },
         credentials: "include",
-        body: JSON.stringify({ ...newPatient, age: newPatient.age ? Number(newPatient.age) : null, user_id })
+        body: JSON.stringify({ ...newPatient, user_id })
       });
 
       const data = await res.json();
@@ -222,7 +226,7 @@ export default function NewEncounter() {
         setSelectedPatient(data);
         setSearchTerm(data.name);
         setShowNewPatientForm(false);
-        setNewPatient({ name: "", age: "", gender: "", hospital_id: "" });
+        setNewPatient({ name: "", dob: "", gender: "", hospital_id: "" });
       }
     } catch (err) {
       console.error(err);
@@ -314,30 +318,14 @@ export default function NewEncounter() {
                 </label>
 
                 <label>
-                  Age: *
+                  Date of Birth: *
                   <input
-                    type="text"
-                    inputMode="numeric"
-                    value={newPatient.age}
+                    type="date"
+                    value={newPatient.dob}
                     required
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      // Only allow digits, max 3 characters (up to 150)
-                      if (val === "" || /^\d{1,3}$/.test(val)) {
-                        const num = Number(val);
-                        if (val === "" || num <= 150) {
-                          setNewPatient({ ...newPatient, age: val });
-                        }
-                      }
-                    }}
-                    onKeyDown={(e) => {
-                      // Block e, E, +, -, . from being typed
-                      if (["e", "E", "+", "-", "."].includes(e.key)) {
-                        e.preventDefault();
-                      }
-                    }}
-                    placeholder="0-150"
-                    style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "6px", border: "1px solid #ccc" }}
+                    max={new Date().toISOString().split('T')[0]}
+                    onChange={(e) => setNewPatient({ ...newPatient, dob: e.target.value })}
+                    style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "6px", border: "1px solid #ccc", color: "black" }}
                   />
                 </label>
 

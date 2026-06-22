@@ -17,12 +17,12 @@ export default function TokenRefreshManager() {
 
     const checkUserLogin = () => {
       const userId = localStorage.getItem("userId");
-      
+
       // If userId exists, user is logged in
       const isLoggedIn = !!userId;
-      
+
       console.log(`🔍 Login check: userId=${isLoggedIn ? '✓' : '✗'}, isReady=${isReady}`);
-      
+
       if (isLoggedIn && !isReady) {
         console.log("✅ User logged in detected, starting token refresh manager");
         setIsReady(true);
@@ -60,7 +60,7 @@ export default function TokenRefreshManager() {
         console.log(`🔄 [${timestamp}] CALLING /api/refresh endpoint...`);
         console.log(`   User ID: ${localStorage.getItem("userId")}`);
         console.log(`   (session_id cookie sent automatically via credentials: 'include')`);
-        
+
         const res = await fetch("/api/refresh", {
           method: "POST",
           credentials: "include",
@@ -69,7 +69,7 @@ export default function TokenRefreshManager() {
             'X-API-KEY': process.env.NEXT_PUBLIC_API_KEY || "",
           },
         });
-        
+
         console.log(`📡 [${timestamp}] Response received: ${res.status} ${res.statusText}`);
 
         if (!res.ok) {
@@ -79,31 +79,31 @@ export default function TokenRefreshManager() {
           console.error(`   Status: ${res.status}`);
           console.error(`   Error: ${errorData.error}`);
           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
-          
+
           // ✅ If 401 (tokens missing from Redis), logout immediately
           if (res.status === 401) {
             console.error("❌ Session expired (tokens not in Redis), logging out immediately...");
             localStorage.clear();
             // Notify UserContext that session expired
             window.dispatchEvent(new Event('userUpdated'));
-            
+
             // Clear timeout before redirect
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
-            
+
             router.push("/login");
             return false;
           }
-          
+
           // ✅ For other errors, retry up to 3 times
           if (failureCountRef.current >= 3) {
             console.error("❌ 3 consecutive refresh failures, logging out...");
             localStorage.clear();
             // Notify UserContext that session expired
             window.dispatchEvent(new Event('userUpdated'));
-            
+
             // Clear timeout before redirect
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
-            
+
             router.push("/login");
           } else {
             console.warn(`⚠️ Will retry on next interval (${3 - failureCountRef.current} attempts remaining)`);
@@ -124,7 +124,7 @@ export default function TokenRefreshManager() {
         console.log(`   ⏱️  Next refresh scheduled in: 50 seconds`);
         console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
         return true;
-        
+
       } catch (err) {
         failureCountRef.current += 1;
         const timestamp = new Date().toLocaleTimeString();
@@ -134,16 +134,16 @@ export default function TokenRefreshManager() {
         console.error(`   Error message: ${err.message}`);
         console.error(`   Stack: ${err.stack?.substring(0, 200)}...`);
         console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
-        
+
         // ✅ Only logout after 3 consecutive failures
         if (failureCountRef.current >= 3) {
           console.error("❌ 3 consecutive refresh failures, logging out...");
           localStorage.clear();
           // Notify UserContext that session expired
           window.dispatchEvent(new Event('userUpdated'));
-          
+
           if (timeoutRef.current) clearTimeout(timeoutRef.current);
-          
+
           router.push("/login");
         } else {
           console.warn(`⚠️ Network error, will retry in 50 seconds (${3 - failureCountRef.current} attempts remaining)`);
@@ -155,7 +155,7 @@ export default function TokenRefreshManager() {
     // ✅ Recursive refresh function that schedules the next refresh after completion
     const scheduleNextRefresh = async () => {
       const success = await refreshAccessToken();
-      
+
       // Schedule next refresh in 50 seconds regardless of success/failure
       // (failure handling already logs user out after 3 attempts)
       timeoutRef.current = setTimeout(() => {
