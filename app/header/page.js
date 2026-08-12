@@ -59,11 +59,12 @@ export default function Header({ handleLogout }) {
           }}
         >
           <span style={{ display: 'inline-block', width: '24px', height: '24px' }}>
-            <img 
-              src="/images/app-logo.png" 
-              alt="Logo" 
-              style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+            <img
+              src="/spark/images/app-logo.png"
+              alt="Logo"
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
             />
+
           </span>
         </div>
 
@@ -173,11 +174,11 @@ export default function Header({ handleLogout }) {
                 minWidth: "180px"
               }}
             >
-              <div style={{ 
-                padding: "8px 12px", 
-                fontSize: "13px", 
-                color: "#64748b", 
-                borderBottom: "1px solid #e2e8f0", 
+              <div style={{
+                padding: "8px 12px",
+                fontSize: "13px",
+                color: "#64748b",
+                borderBottom: "1px solid #e2e8f0",
                 marginBottom: "4px",
                 wordBreak: "break-word"
               }}>

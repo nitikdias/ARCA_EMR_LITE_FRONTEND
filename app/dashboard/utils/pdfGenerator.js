@@ -115,7 +115,7 @@ export const generateSummaryOnlyPDF = async (sections, customTitle = "Clinical S
 
   // Logo
   const logoImg = new Image();
-  logoImg.src = "/images/app-logo.png";
+  logoImg.src = "/spark/images/app-logo.png";
   await new Promise((resolve) => { logoImg.onload = resolve; });
   const logoWidth = 36;
   const logoHeight = (logoImg.height / logoImg.width) * logoWidth;
@@ -189,7 +189,7 @@ export const generateTranscriptOnlyPDF = async (transcript) => {
 
   // Logo
   const logoImg = new Image();
-  logoImg.src = "/images/app-logo.png";
+  logoImg.src = "/spark/images/app-logo.png";
   await new Promise((resolve) => { logoImg.onload = resolve; });
   const logoWidth = 36;
   const logoHeight = (logoImg.height / logoImg.width) * logoWidth;

@@ -15,7 +15,7 @@ export default function Register({ stats }) {
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
 
   //fetch user details
-    useEffect(() => {
+  useEffect(() => {
     async function fetchUser() {
       try {
         const res = await fetch("/api/me");
@@ -35,48 +35,48 @@ export default function Register({ stats }) {
   };
 
   const handleRegister = async () => {
-  if (!files.length) {
-    setMessage("Please select at least one file.");
-    return;
-  }
-
-  if (!user) {
-    setMessage("User not loaded yet.");
-    return;
-  }
-
-  const formData = new FormData();
-  Array.from(files).forEach((file) => formData.append("files", file));
-  formData.append("user_id", user.id); // ✅ attach user_id
-
-  setLoading(true);
-  setMessage("");
-
-  const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
-  try {
-    const res = await fetch(`/api/backend/register`, {
-      method: "POST",
-      headers: {
-        "X-API-KEY": API_KEY,
-      },
-      credentials: "include",
-      body: formData,
-    });
-
-    const data = await res.json();
-    if (res.ok) {
-      setMessage("Registration successful!");
-      setFiles([]); // clear selected files
-    } else {
-      setMessage(data.error || "Registration failed.");
+    if (!files.length) {
+      setMessage("Please select at least one file.");
+      return;
     }
-  } catch (err) {
-    console.error(err);
-    setMessage("Server error. Try again later.");
-  } finally {
-    setLoading(false);
-  }
-};
+
+    if (!user) {
+      setMessage("User not loaded yet.");
+      return;
+    }
+
+    const formData = new FormData();
+    Array.from(files).forEach((file) => formData.append("files", file));
+    formData.append("user_id", user.id); // ✅ attach user_id
+
+    setLoading(true);
+    setMessage("");
+
+    const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
+    try {
+      const res = await fetch(`/api/backend/register`, {
+        method: "POST",
+        headers: {
+          "X-API-KEY": API_KEY,
+        },
+        credentials: "include",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setMessage("Registration successful!");
+        setFiles([]); // clear selected files
+      } else {
+        setMessage(data.error || "Registration failed.");
+      }
+    } catch (err) {
+      console.error(err);
+      setMessage("Server error. Try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
 
   return (

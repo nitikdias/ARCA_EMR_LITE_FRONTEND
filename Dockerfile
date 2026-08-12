@@ -1,48 +1,46 @@
-# Use Node.js 20 Alpine
-FROM node:20-alpine AS base
-
-# Install dependencies only when needed
-FROM base AS deps
+# Stage 1: Build the application
+FROM node:20-alpine AS builder
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Copy package files
+# Install all dependencies to build
 COPY package.json package-lock.json* ./
 RUN npm ci
 
-# Rebuild the source code only when needed
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# Copy source and build
 COPY . .
-
-# Set environment variables for build
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-# Build Next.js app
-RUN npm run build
+# Standard build (not using standalone pruning for custom server compatibility)
+RUN npm run build 
 
-# Production image, copy all the files and run next
-FROM base AS runner
+# Stage 2: Runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy built application
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+# Install ONLY production dependencies to keep image size reasonable
+COPY package.json package-lock.json* ./
+RUN npm ci --only=production
 
+# Copy built assets, public files, and your custom server
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/server.js ./server.js
+COPY --from=builder /app/next.config.mjs ./next.config.mjs
+
+RUN chown -R nextjs:nodejs .
 USER nextjs
 
 EXPOSE 3000
 
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
-
+# Run your custom server
 CMD ["node", "server.js"]

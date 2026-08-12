@@ -78,7 +78,7 @@ export default function ReportPage({ user }) {
       console.log("🚪 Starting logout...");
 
       // ✅ Call Next.js API route (which forwards to Flask)
-      const res = await fetch("/api/logout", {
+      const res = await fetch("/spark/api/logout", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -102,11 +102,11 @@ export default function ReportPage({ user }) {
         console.log("🔄 Redirecting to login...");
 
         // ✅ Redirect to login
-        router.push("/login");
+        router.push("/spark/login");
 
         // ✅ Optional: Force full page reload after a short delay
         setTimeout(() => {
-          window.location.href = "/login";
+          window.location.href = "/spark/login";
         }, 100);
       } else {
         const errorData = await res.json();
@@ -130,7 +130,7 @@ export default function ReportPage({ user }) {
       const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
 
       try {
-        const res = await fetch(`/api/backend/meetings?user_id=${userId}`, {
+        const res = await fetch(`/spark/api/backend/meetings?user_id=${userId}`, {
           headers: {
             "Content-Type": "application/json",
             "X-API-KEY": API_KEY,
@@ -159,7 +159,7 @@ export default function ReportPage({ user }) {
       const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
 
       try {
-        const res = await fetch(`/api/backend/stats?user_id=${userId}`, {
+        const res = await fetch(`/spark/api/backend/stats?user_id=${userId}`, {
           headers: {
             "Content-Type": "application/json",
             "X-API-KEY": API_KEY,
@@ -241,7 +241,7 @@ export default function ReportPage({ user }) {
 
     const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     try {
-      const res = await fetch(`/api/backend/transcripts/${transcript.id}`, {
+      const res = await fetch(`/spark/api/backend/transcripts/${transcript.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", "X-API-KEY": API_KEY },
         credentials: "include",
@@ -418,7 +418,7 @@ export default function ReportPage({ user }) {
                                     className="p-1.5 sm:p-2 rounded hover:bg-gray-100 flex items-center justify-center border border-gray-200"
                                     title="Copy Transcript"
                                   >
-                                    <img src="/images/copy.png" alt="Copy" className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                    <img src="/spark/images/copy.png" alt="Copy" className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                   </button>
                                   {/* Download Transcript PDF */}
                                   <button
@@ -426,7 +426,7 @@ export default function ReportPage({ user }) {
                                     className="p-1.5 sm:p-2 rounded hover:bg-gray-100 flex items-center justify-center border border-gray-200"
                                     title="Download Transcript PDF"
                                   >
-                                    <img src="/images/downloads.png" alt="Download" className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                    <img src="/spark/images/downloads.png" alt="Download" className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                   </button>
                                 </div>
                               </div>
@@ -519,7 +519,7 @@ export default function ReportPage({ user }) {
                                       className="p-1.5 sm:p-2 rounded hover:bg-gray-100 flex items-center justify-center border border-gray-200"
                                       title="Copy Summary"
                                     >
-                                      <img src="/images/copy.png" alt="Copy" className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                      <img src="/spark/images/copy.png" alt="Copy" className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                     </button>
                                     {/* Download Summary PDF */}
                                     <button
@@ -527,7 +527,7 @@ export default function ReportPage({ user }) {
                                       className="p-1.5 sm:p-2 rounded hover:bg-gray-100 flex items-center justify-center border border-gray-200"
                                       title="Download Summary PDF"
                                     >
-                                      <img src="/images/downloads.png" alt="Download" className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                      <img src="/spark/images/downloads.png" alt="Download" className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                     </button>
                                   </div>
                                 </div>
@@ -585,7 +585,7 @@ export default function ReportPage({ user }) {
                               className="p-2 sm:p-2.5 rounded hover:bg-gray-100 flex items-center justify-center border border-gray-200"
                               title="Edit"
                             >
-                              <img src="/images/edit.png" alt="Edit" className="w-4 h-4 sm:w-5 sm:h-5" />
+                              <img src="/spark/images/edit.png" alt="Edit" className="w-4 h-4 sm:w-5 sm:h-5" />
                             </button>
                           </div>
                         </div>

@@ -36,7 +36,7 @@ export default async function AdminDashboard() {
           <h2 className="text-xl font-semibold">Transcripts</h2>
           <p className="text-gray-500">{transcriptCount} transcripts</p>
         </Link>
-        
+
       </div>
     </div>
   );

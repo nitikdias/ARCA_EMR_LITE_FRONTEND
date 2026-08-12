@@ -2,7 +2,10 @@
 const nextConfig = {
   // ✅ Enable standalone output for Docker
   output: 'standalone',
-  
+  // ✅ App hosted under /spark subpath
+  basePath: '/spark',
+  skipTrailingSlashRedirect: true,
+
   // ✅ Enable experimental features for cookie handling
   experimental: {
     serverActions: {
@@ -23,13 +26,13 @@ const nextConfig = {
       },
     ];
   },
-  
+
   // ✅ Proxy whisper requests (backend goes through API route for long timeout support)
   async rewrites() {
     return [
       {
         source: '/api/whisper/:path*',
-        destination: 'https://whisper-stt-fjbfhxeyhwerhuab.z03.azurefd.net/:path*',
+        destination: 'http://192.168.112.6:30472/:path*',
       },
     ];
   },

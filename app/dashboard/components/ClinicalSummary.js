@@ -99,7 +99,7 @@ function SummarySection({ sectionKey, section, onUpdate, onSave, onRemove, canRe
             formData.append("audio", wavBlob, "dictation.wav");
             formData.append("user_id", userId);
 
-            const response = await fetch("/api/whisper/whisper-dictate", {
+            const response = await fetch("/spark/api/whisper/whisper-dictate", {
               method: "POST",
               headers: { "X-API-KEY": API_KEY },
               credentials: "include",
@@ -198,7 +198,7 @@ function SummarySection({ sectionKey, section, onUpdate, onSave, onRemove, canRe
             className="p-2 border-none bg-transparent hover:bg-slate-200 rounded transition-colors"
             title={section.editingContent ? "Save" : "Edit"}
           >
-            {section.editingContent ? "💾" : <img src="/images/edit.png" alt="Edit" className="w-4 h-4" />}
+            {section.editingContent ? "💾" : <img src="/spark/images/edit.png" alt="Edit" className="w-4 h-4" />}
           </button>
           <button
             onClick={handleDictateClick}
@@ -206,9 +206,9 @@ function SummarySection({ sectionKey, section, onUpdate, onSave, onRemove, canRe
             title={isDictating ? "Stop dictation" : "Start dictation"}
           >
             {isDictating ? (
-              <img src="/images/stop.png" alt="Stop" className="w-4 h-4" />
+              <img src="/spark/images/stop.png" alt="Stop" className="w-4 h-4" />
             ) : (
-              <img src="/images/mic.png" alt="Dictate" className="w-4 h-4" />
+              <img src="/spark/images/mic.png" alt="Dictate" className="w-4 h-4" />
             )}
           </button>
           <button
@@ -216,7 +216,7 @@ function SummarySection({ sectionKey, section, onUpdate, onSave, onRemove, canRe
             className="p-2 border-none bg-transparent hover:bg-slate-200 rounded transition-colors"
             title="Copy section"
           >
-            <img src="/images/copy.png" alt="Copy" className="w-4 h-4" />
+            <img src="/spark/images/copy.png" alt="Copy" className="w-4 h-4" />
           </button>
           {canRemove && (
             <button
@@ -370,14 +370,14 @@ export default function ClinicalSummary({ sections, setSections, saveSectionToDB
               className="p-2 border border-gray-800 rounded bg-transparent hover:bg-gray-50 transition-colors"
               title="Copy summary to clipboard"
             >
-              <img src="/images/copy.png" alt="Copy" className="w-4 h-4" />
+              <img src="/spark/images/copy.png" alt="Copy" className="w-4 h-4" />
             </button>
             <button
               onClick={() => generateSummaryOnlyPDF(sections)}
               className="p-2 border border-gray-800 rounded bg-transparent hover:bg-gray-50 transition-colors"
               title="Download summary as PDF"
             >
-              <img src="/images/downloads.png" alt="Save PDF" className="w-4 h-4" />
+              <img src="/spark/images/downloads.png" alt="Save PDF" className="w-4 h-4" />
             </button>
           </div>
         </div>

@@ -31,7 +31,7 @@ export default function NewEncounter() {
 
   // ---------------------- DESIGN ONLY ----------------------
   const containerStyle = {
-    backgroundImage: "url('/images/auth-image.png')",
+    backgroundImage: "url('/spark/images/auth-image.png')",
     backgroundSize: "cover",
     backgroundPosition: "center",
     backgroundRepeat: "no-repeat",
@@ -68,7 +68,7 @@ export default function NewEncounter() {
 
   const handleLogout = async () => {
     try {
-      const res = await fetch("/api/logout", {
+      const res = await fetch("/spark/api/logout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include"
@@ -80,7 +80,7 @@ export default function NewEncounter() {
         window.dispatchEvent(new Event('userUpdated'));
         // Redirect to login
         router.push("/login");
-        setTimeout(() => (window.location.href = "/login"), 100);
+        setTimeout(() => (window.location.href = "/spark/login"), 100);
       }
     } catch (err) {
       console.error("Logout error:", err);
@@ -92,7 +92,7 @@ export default function NewEncounter() {
     if (!id) return;
     const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     try {
-      const res = await fetch(`/api/backend/stats?user_id=${id}`, {
+      const res = await fetch(`/spark/api/backend/stats?user_id=${id}`, {
         headers: { "Content-Type": "application/json", "X-API-KEY": API_KEY },
         credentials: "include"
       });
@@ -113,7 +113,7 @@ export default function NewEncounter() {
     if (!id) return;
     const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     try {
-      let url = `/api/backend/patients?user_id=${id}`;
+      let url = `/spark/api/backend/patients?user_id=${id}`;
       if (debouncedSearchTerm) url += `&search=${debouncedSearchTerm}`;
 
       const res = await fetch(url, {
@@ -153,7 +153,7 @@ export default function NewEncounter() {
     setLoading(true);
     const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     try {
-      const res = await fetch(`/api/backend/new_encounter`, {
+      const res = await fetch(`/spark/api/backend/new_encounter`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-API-KEY": API_KEY },
         credentials: "include",
@@ -213,7 +213,7 @@ export default function NewEncounter() {
       const user_id = localStorage.getItem("userId");
       if (!user_id) return alert("User not found");
 
-      const res = await fetch(`/api/backend/patients`, {
+      const res = await fetch(`/spark/api/backend/patients`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-API-KEY": API_KEY },
         credentials: "include",
@@ -244,7 +244,8 @@ export default function NewEncounter() {
 
         <div style={contentWrapperStyle}>
           <div style={formWrapperStyle}>
-            <img src="/images/auth-logo.png" alt="Auth Logo" style={logoStyle} />
+            <img src="/spark/images/auth-logo.png" alt="Auth Logo" style={logoStyle} />
+
 
             <h2 style={{ textAlign: "center", marginBottom: "20px", color: "black", fontWeight: "600" }}>Start New Encounter</h2>
 

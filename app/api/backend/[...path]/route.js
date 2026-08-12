@@ -90,6 +90,7 @@ async function handleRequest(request, context, method) {
         if (body) {
           fetchOptions.body = body;
           headers['Content-Type'] = contentType || 'application/json';
+          console.log(`📦 [PROXY-LOG] Request Body for ${endpoint}:`, body.length > 2000 ? body.substring(0, 2000) + '... (truncated)' : body);
         }
       }
     }
@@ -104,12 +105,14 @@ async function handleRequest(request, context, method) {
       data = await response.text();
     }
     
-    console.log(`📡 Backend: ${response.status}`);
+    console.log(`📡 [PROXY-LOG] Backend Status for ${endpoint}: ${response.status}`);
+    console.log(`📥 [PROXY-LOG] Response Output from ${endpoint}:`, typeof data === 'object' ? JSON.stringify(data, null, 2) : data);
     
     return NextResponse.json(
       typeof data === 'string' ? { message: data } : data,
       { status: response.status }
     );
+
     
   } catch (error) {
     console.error('💥 Proxy error:', error);

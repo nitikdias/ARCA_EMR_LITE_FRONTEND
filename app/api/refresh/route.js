@@ -9,16 +9,20 @@ export async function POST(request) {
     // ✅ Await cookies() - required in Next.js 15
     const cookieStore = await cookies();
     const sessionId = cookieStore.get('session_id');
+    
+    // Log all cookies to debug missing session
+    const cookieNames = cookieStore.getAll().map(c => c.name).join(", ");
+    console.log(`🌐 [Refresh API] Cookies found: [${cookieNames || "NONE"}]`);
 
     if (!sessionId) {
-      console.error('❌ No session_id cookie found');
+      console.error('❌ [Refresh API] No session_id cookie found');
       return NextResponse.json(
         { error: 'No session found' },
         { status: 401 }
       );
     }
 
-    console.log('🔁 Forwarding refresh request to Flask backend:', `${API_BASE_URL}/refresh`);
+    console.log('🔁 [Refresh API] Forwarding to backend:', `${API_BASE_URL}/refresh`);
     console.log('   Session ID:', sessionId.value.substring(0, 8) + '...');
     console.log('   API_KEY:', API_KEY ? `Set (${API_KEY.length} chars)` : '❌ MISSING');
 
@@ -46,7 +50,7 @@ export async function POST(request) {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('❌ Flask refresh failed:', errorText);
-      
+
       // ✅ If session is invalid/expired (401), delete the stale cookie
       if (response.status === 401) {
         console.log('🗑️ Deleting stale session_id cookie due to 401 from backend');
@@ -57,7 +61,7 @@ export async function POST(request) {
         nextResponse.cookies.delete('session_id');
         return nextResponse;
       }
-      
+
       return NextResponse.json(
         { error: errorText },
         { status: response.status }
@@ -66,25 +70,25 @@ export async function POST(request) {
 
     const data = await response.json();
     const expiresIn = data.expires_in || 60;
-    
+
     console.log('✅ Token refresh successful, expires in:', expiresIn, 'seconds');
-    
+
     // ✅ Need to explicitly set the cookie since we're proxying
     // The backend's Set-Cookie header won't work across different origins
     const nextResponse = NextResponse.json(data);
-    
+
     nextResponse.cookies.set('session_id', sessionId.value, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false, // Allow sessions over HTTP in private networks
       sameSite: 'lax',
       path: '/',
       maxAge: expiresIn, // ✅ Extend cookie lifetime with each refresh
     });
-    
+
     console.log(`✅ Extended session_id cookie lifetime by ${expiresIn}s`);
-    
+
     return nextResponse;
-    
+
   } catch (error) {
     console.error('💥 Refresh error:', error);
     return NextResponse.json(

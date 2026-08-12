@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL ;
+const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
 const API_KEY = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY || "";
-const TOKEN_KEY = process.env.TOKEN_KEY || process.env.NEXT_PUBLIC_TOKEN_KEY ;
+const TOKEN_KEY = process.env.TOKEN_KEY || process.env.NEXT_PUBLIC_TOKEN_KEY;
 
 export async function middleware(req) {
   const { pathname } = req.nextUrl;
@@ -20,7 +20,7 @@ export async function middleware(req) {
     if (pathname === "/login") {
       return NextResponse.next();
     }
-    
+
     console.warn("❌ No session_id cookie, redirecting to /login");
     return NextResponse.redirect(new URL("/login", req.url));
   }
@@ -29,8 +29,8 @@ export async function middleware(req) {
     // ✅ Verify session with Flask backend
     const res = await fetch(`${API_BASE_URL}/verify-session`, {
       method: "POST",
-      headers: { 
-        "Content-Type": "application/json", 
+      headers: {
+        "Content-Type": "application/json",
         "X-API-KEY": API_KEY,
         // Also send cookie explicitly to ensure Flask can read it when requests come from middleware
         "Cookie": `session_id=${sessionId}`
@@ -41,7 +41,7 @@ export async function middleware(req) {
     if (!res.ok) {
       // Read a short body for diagnostics and avoid blowing up logs
       const text = await res.text().catch(() => "<no body>");
-      console.warn("❌ Session verification failed, redirecting to /login", { status: res.status, body: text.slice(0,200) });
+      console.warn("❌ Session verification failed, redirecting to /login", { status: res.status, body: text.slice(0, 200) });
 
       // Don't delete cookie here - let backend/refresh handle it
       return NextResponse.redirect(new URL("/login", req.url));
@@ -50,7 +50,7 @@ export async function middleware(req) {
     const data = await res.json();
     if (!data.valid) {
       console.warn("⚠️ Invalid session, redirecting to /login");
-      
+
       // ✅ Don't delete cookie here - let backend/refresh handle it
       return NextResponse.redirect(new URL("/login", req.url));
     }

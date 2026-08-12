@@ -1,0 +1,10 @@
+docker buildx build \
+--no-cache \
+--platform linux/amd64 \
+-t arca-spark-frontend:amd64 \
+--load \
+.
+
+docker tag arca-spark-frontend:amd64 192.168.112.13:5000/arca-spark-frontend:v16
+
+docker push 192.168.112.13:5000/arca-spark-frontend:v16

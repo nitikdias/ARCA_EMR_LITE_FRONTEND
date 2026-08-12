@@ -61,7 +61,8 @@ export default function TokenRefreshManager() {
         console.log(`   User ID: ${localStorage.getItem("userId")}`);
         console.log(`   (session_id cookie sent automatically via credentials: 'include')`);
 
-        const res = await fetch("/api/refresh", {
+        const res = await fetch("/spark/api/refresh", {
+
           method: "POST",
           credentials: "include",
           headers: {

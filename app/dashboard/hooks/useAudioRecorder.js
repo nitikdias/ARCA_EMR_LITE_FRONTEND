@@ -62,7 +62,7 @@ async function upload(blob, name, userId) {
 
   console.log(`📤 [upload] Starting upload: ${name}, size=${(blob.size / 1024).toFixed(2)}KB`);
 
-  return fetch(`/api/backend/uploadchunk`, {
+  return fetch(`/spark/api/backend/uploadchunk`, {
     headers: { "X-API-Key": API_KEY },
     credentials: "include",
     method: "POST",

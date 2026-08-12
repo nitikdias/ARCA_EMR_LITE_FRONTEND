@@ -10,7 +10,7 @@ export default function useTokenRefresher() {
       if (!refreshToken) return;
 
       try {
-        const res = await fetch(`/api/refresh`, {
+        const res = await fetch(`/spark/api/refresh`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -31,8 +31,9 @@ export default function useTokenRefresher() {
         console.error("❌ Token refresh failed:", err);
         localStorage.clear();
         document.cookie = "access_token=; path=/; max-age=0";
-        window.location.href = "/login";
+        window.location.href = "/spark/login";
       }
+
     };
 
     // ⏱️ Poll every 5 seconds

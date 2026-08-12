@@ -9,7 +9,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const API_KEY = process.env.API_KEY || "";
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
-  const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY ;
+  const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -21,11 +21,16 @@ export default function Login() {
     const name = formData.get("name");
     const phone = formData.get("phone");
 
-    const endpoint = isSignup
-      ? `/api/backend/registerUser`
-      : `/api/proxy/login`; // ✅ Use proxy endpoint to set cookies on frontend domain
+    // Change from:
+    // const endpoint = isSignup
+    //   ? `/api/backend/registerUser`
+    //   : `/api/proxy/login`;
 
-    console.log("📤 Submitting to:", endpoint);
+    // To:
+    const endpoint = isSignup
+      ? `/spark/api/backend/registerUser`
+      : `/spark/api/proxy/login`; //proxy server redirect
+
 
     try {
       const body = isSignup
@@ -48,24 +53,24 @@ export default function Login() {
           alert("✅ Registration successful! Please login.");
           setIsSignup(false);
         } else {
-        console.log("✅ Login successful, storing user data...");
-        console.log("📋 Response headers:", Object.fromEntries(res.headers.entries()));
-        
-        // ✅ Check if cookie was received
-        console.log("🍪 Current cookies:", document.cookie);
+          console.log("✅ Login successful, storing user data...");
+          console.log("📋 Response headers:", Object.fromEntries(res.headers.entries()));
 
-        // ✅ Store only user info in localStorage
-        localStorage.setItem("userId", data.user.id);
-        localStorage.setItem("userName", data.user.name);
-        localStorage.setItem("userEmail", data.user.email);
-        localStorage.setItem("userPhone", data.user.phone || "");
+          // ✅ Check if cookie was received
+          console.log("🍪 Current cookies:", document.cookie);
 
-        // ✅ Notify UserContext that user data has been updated
-        window.dispatchEvent(new Event('userUpdated'));
+          // ✅ Store only user info in localStorage
+          localStorage.setItem("userId", data.user.id);
+          localStorage.setItem("userName", data.user.name);
+          localStorage.setItem("userEmail", data.user.email);
+          localStorage.setItem("userPhone", data.user.phone || "");
 
-        console.log("🚀 Redirecting to home page...");
-        router.push("/newEncounter");
-      }
+          // ✅ Notify UserContext that user data has been updated
+          window.dispatchEvent(new Event('userUpdated'));
+
+          console.log("🚀 Redirecting to home page...");
+          router.push("/newEncounter");
+        }
 
       } else {
         alert(data.error || data.message || "Something went wrong");
@@ -207,8 +212,8 @@ export default function Login() {
                     ? "Signing up..."
                     : "Logging in..."
                   : isSignup
-                  ? "Sign Up"
-                  : "Login"}
+                    ? "Sign Up"
+                    : "Login"}
               </button>
             </form>
 

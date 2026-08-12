@@ -198,7 +198,7 @@ export default function App() {
         const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
         (async () => {
           try {
-            await fetch(`/api/backend/select_language`, {
+            await fetch(`/spark/api/backend/select_language`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -234,7 +234,7 @@ export default function App() {
       const formData = new FormData();
       formData.append('user_id', user.id);
 
-      const response = await fetch(`/api/backend/clear_transcript`, {
+      const response = await fetch(`/spark/api/backend/clear_transcript`, {
         method: "POST",
         headers: {
           "X-API-KEY": API_KEY,
@@ -261,7 +261,7 @@ export default function App() {
     async function fetchStats() {
       const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
       try {
-        const res = await fetch(`/api/backend/stats?user_id=${user.id}`, {
+        const res = await fetch(`/spark/api/backend/stats?user_id=${user.id}`, {
           headers: { "X-API-KEY": API_KEY },
           credentials: "include"
         });
@@ -279,7 +279,7 @@ export default function App() {
       const formData = new FormData();
       formData.append("user_id", user.id);
       try {
-        const res = await fetch(`/api/backend/get_transcript`, {
+        const res = await fetch(`/spark/api/backend/get_transcript`, {
           method: "POST",
           body: formData,
           headers: { "X-API-KEY": API_KEY },
@@ -323,7 +323,7 @@ export default function App() {
 
     const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     try {
-      const response = await fetch(`/api/backend/select_language`, {
+      const response = await fetch(`/spark/api/backend/select_language`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -363,7 +363,7 @@ export default function App() {
     }
     const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
     try {
-      await fetch(`/api/backend/update_transcript_section`, {
+      await fetch(`/spark/api/backend/update_transcript_section`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-API-KEY": API_KEY },
         credentials: "include",
@@ -382,7 +382,7 @@ export default function App() {
       return;
     }
     try {
-      await fetch(`/api/backend/update_transcript_section`, {
+      await fetch(`/spark/api/backend/update_transcript_section`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-API-KEY": API_KEY },
         credentials: "include",
@@ -429,23 +429,17 @@ export default function App() {
       };
 
       console.log("🔵 [DISCHARGE SUMMARY] Starting generation");
-      console.log("📦 Payload:", {
-        meeting_id: parsedMeetingId,
-        user_id: userId,
-        transcript_length: transcript?.length || 0,
-        sections: sectionsPayload,
-        language: selectedLanguage
-      });
+      console.log("📦 Full Request Payload:", JSON.stringify(payload, null, 2));
 
       const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
 
       toast.info("Generating discharge summary... This may take up to 2 minutes.", { autoClose: 5000 });
 
       try {
-        console.log("🚀 Sending request to /api/backend/generate_discharge_summary");
+        console.log("🚀 Sending request to /spark/api/backend/generate_discharge_summary");
         console.log("⏰ Request started at:", new Date().toISOString());
 
-        const res = await fetch(`/api/backend/generate_discharge_summary`, {
+        const res = await fetch(`/spark/api/backend/generate_discharge_summary`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -476,10 +470,11 @@ export default function App() {
         }
 
         const data = await res.json();
-        console.log("✅ Discharge Summary API response:", data);
-        console.log("📊 Response data:", {
+        console.log("✅ Discharge Summary Full API Response Data:", JSON.stringify(data, null, 2));
+        console.log("📊 Response data summary:", {
           has_sections: !!data.sections,
-          sections_count: data.sections ? Object.keys(data.sections).length : 0,
+          returned_keys: data.sections ? Object.keys(data.sections) : [],
+          expected_keys: Object.keys(dischargeSections),
           transcript_id: data.transcript_id,
           status: data.status
         });
@@ -494,8 +489,10 @@ export default function App() {
         // Update discharge sections with generated content
         const updatedDischargeSections = { ...dischargeSections };
         Object.keys(updatedDischargeSections).forEach((key) => {
-          if (data.sections[key]) {
-            updatedDischargeSections[key].content = data.sections[key] || "";
+          const contentFromBackend = data.sections[key] || data.sections[key.toLowerCase()] || "";
+          console.log(`🔑 Key '${key}': Backend Content Length=${contentFromBackend.length}`);
+          if (contentFromBackend) {
+            updatedDischargeSections[key].content = contentFromBackend;
           }
         });
 
@@ -503,6 +500,7 @@ export default function App() {
         setIsSummaryGenerated(true);
         setIsGeneratingSummary(false); // ✅ Show "Generated" instantly
         toast.success("Discharge summary loaded into sections!");
+
 
         // Auto-save to database
         for (const key in updatedDischargeSections) {
@@ -527,7 +525,7 @@ export default function App() {
         // Try to fetch the successfully saved summary from database
         try {
           console.log("🔍 Fetching from database fallback endpoint...");
-          const dbRes = await fetch(`/api/backend/get_discharge_summary?meeting_id=${meetingId}`, {
+          const dbRes = await fetch(`/spark/api/backend/get_discharge_summary?meeting_id=${meetingId}`, {
             method: "GET",
             headers: { "X-API-Key": API_KEY },
             credentials: "include",
@@ -613,10 +611,10 @@ export default function App() {
         selected_language: selectedLanguage || "en",
       };
 
-      console.log("Sending clinical summary payload:", payload);
+      console.log("🔵 [CLINICAL SUMMARY] Full Request Payload:", JSON.stringify(payload, null, 2));
 
       const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY;
-      const res = await fetch(`/api/backend/generate_summary`, {
+      const res = await fetch(`/spark/api/backend/generate_summary`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -634,7 +632,14 @@ export default function App() {
       }
 
       const data = await res.json();
-      console.log("Clinical Summary API response:", data);
+      console.log("✅ Clinical Summary Full API Response Data:", JSON.stringify(data, null, 2));
+      console.log("📊 Response data summary:", {
+        has_sections: !!data.sections,
+        returned_keys: data.sections ? Object.keys(data.sections) : [],
+        expected_keys: Object.keys(sections),
+        transcript_id: data.transcript_id,
+        status: data.status
+      });
 
       // Backend now returns 'sections' dict
       if (!data || !data.sections) {
@@ -645,8 +650,10 @@ export default function App() {
       // Update sections with generated content
       const updatedSections = { ...sections };
       Object.keys(updatedSections).forEach((key) => {
-        if (data.sections[key]) {
-          updatedSections[key].content = data.sections[key] || "";
+        const contentFromBackend = data.sections[key] || data.sections[key.toLowerCase()] || "";
+        console.log(`🔑 Key '${key}': Backend Content Length=${contentFromBackend.length}`);
+        if (contentFromBackend) {
+          updatedSections[key].content = contentFromBackend;
         }
       });
 
@@ -654,6 +661,7 @@ export default function App() {
       setIsSummaryGenerated(true);
       setIsGeneratingSummary(false); // ✅ Show "Generated" instantly
       toast.success("Summary loaded into sections!");
+
 
       // Auto-save to database
       for (const key in updatedSections) {
@@ -674,7 +682,7 @@ export default function App() {
   // --- Logout ---
   const handleLogout = async () => {
     try {
-      const res = await fetch("/api/logout", {  // ✅ Use Next.js API route
+      const res = await fetch("/spark/api/logout", {  // ✅ Use Next.js API route
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -686,7 +694,7 @@ export default function App() {
         localStorage.clear();
         // ✅ Notify UserContext that user has been cleared
         window.dispatchEvent(new Event('userUpdated'));
-        window.location.href = "/login";
+        window.location.href = "/spark/login";
       } else {
         const errorData = await res.json();
         console.error("❌ Logout failed:", errorData);
@@ -713,7 +721,7 @@ export default function App() {
       const formData = new FormData();
       formData.append("user_id", user.id);
       try {
-        const res = await fetch(`/api/backend/get_transcript`, {
+        const res = await fetch(`/spark/api/backend/get_transcript`, {
           method: "POST",
           body: formData,
           headers: { "X-API-KEY": API_KEY },

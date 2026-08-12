@@ -1,28 +1,9 @@
-# Dependencies
 node_modules
-npm-debug.log*
-
-# Next.js
-.next/
-out/
-
-# Production
+.next
+out
 build
-
-# Misc
 .DS_Store
 *.pem
-
-# Debug
 *.log
-
-
-# Vercel
+.git
 .vercel
-
-# TypeScript
-*.tsbuildinfo
-
-# IDE
-.vscode
-.idea

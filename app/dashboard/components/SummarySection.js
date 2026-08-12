@@ -99,7 +99,7 @@ export default function SummarySection({ sectionKey, section, onUpdate, onSave, 
             formData.append("audio", wavBlob, "dictation.wav");
             formData.append("user_id", userId);
 
-            const response = await fetch("/api/whisper/whisper-dictate", {
+            const response = await fetch("/spark/api/whisper/whisper-dictate", {
               method: "POST",
               headers: { "X-API-KEY": API_KEY },
               credentials: "include",
@@ -229,10 +229,8 @@ export default function SummarySection({ sectionKey, section, onUpdate, onSave, 
           >
             {isSaving ? (
               <span className="text-base">⏳</span>
-            ) : section.editingContent ? (
-              <span className="text-base">💾</span>
             ) : (
-              <img src="/images/edit.png" alt="Edit" className="w-4 h-4" />
+              section.editingContent ? "💾" : <img src="/spark/images/edit.png" alt="Edit" className="w-4 h-4" />
             )}
           </button>
 
@@ -243,9 +241,9 @@ export default function SummarySection({ sectionKey, section, onUpdate, onSave, 
             title={isDictating ? "Stop dictation" : "Start dictation"}
           >
             {isDictating ? (
-              <img src="/images/stop.png" alt="Stop" className="w-4 h-4" />
+              <img src="/spark/images/stop.png" alt="Stop" className="w-4 h-4" />
             ) : (
-              <img src="/images/mic.png" alt="Dictate" className="w-4 h-4" />
+              <img src="/spark/images/mic.png" alt="Dictate" className="w-4 h-4" />
             )}
           </button>
 
@@ -255,7 +253,7 @@ export default function SummarySection({ sectionKey, section, onUpdate, onSave, 
             className="p-2 border-none bg-transparent hover:bg-slate-200 rounded transition-colors disabled:opacity-50"
             title="Copy section"
           >
-            <img src="/images/copy.png" alt="Copy" className="w-4 h-4" />
+            <img src="/spark/images/copy.png" alt="Copy" className="w-4 h-4" />
           </button>
 
           {canRemove && (

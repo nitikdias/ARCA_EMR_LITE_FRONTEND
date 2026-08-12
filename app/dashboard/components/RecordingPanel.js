@@ -216,7 +216,7 @@ export default function RecordingPanel({
               className={`p-1.5 sm:p-2 border border-gray-300 rounded bg-transparent transition-colors ${transcript ? 'hover:bg-gray-50' : 'opacity-40 cursor-not-allowed'}`}
               title="Copy transcript"
             >
-              <img src="/images/copy.png" alt="Copy" className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <img src="/spark/images/copy.png" alt="Copy" className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
             <button
               onClick={() => generateTranscriptOnlyPDF(transcript)}
@@ -224,7 +224,7 @@ export default function RecordingPanel({
               className={`p-1.5 sm:p-2 border border-gray-300 rounded bg-transparent transition-colors ${transcript ? 'hover:bg-gray-50' : 'opacity-40 cursor-not-allowed'}`}
               title="Download transcript as PDF"
             >
-              <img src="/images/downloads.png" alt="Download PDF" className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <img src="/spark/images/downloads.png" alt="Download PDF" className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
           </div>
         </div>

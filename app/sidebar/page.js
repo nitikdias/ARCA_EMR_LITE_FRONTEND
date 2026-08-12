@@ -146,7 +146,7 @@ export default function Sidebar({ stats }) {
             }}
           >
             <img
-              src="/images/new-document.png"
+              src="/spark/images/new-document.png"
               alt="New Encounter"
               style={{
                 width: "24px",
@@ -172,7 +172,7 @@ export default function Sidebar({ stats }) {
             }}
           >
             <img
-              src="/images/home.png"
+              src="/spark/images/home.png"
               alt="Home"
               style={{
                 width: "24px",
@@ -198,7 +198,7 @@ export default function Sidebar({ stats }) {
             }}
           >
             <img
-              src="/images/file.png"
+              src="/spark/images/file.png"
               alt="Reports"
               style={{
                 width: "24px",
@@ -224,7 +224,7 @@ export default function Sidebar({ stats }) {
       }}
     >
       <img
-        src="/images/add.png"
+        src="/spark/images/add.png"
         alt="Register"
         style={{
           width: "24px",

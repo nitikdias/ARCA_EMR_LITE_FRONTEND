@@ -47,7 +47,7 @@ async function upload(blob, name, userId) {
   form.append("audio", blob, name);
   form.append("user_id", userId);
 
-  const res = await fetch("/api/backend/uploadchunk", {
+  const res = await fetch("/spark/api/backend/uploadchunk", {
     method: "POST",
     headers: { "X-API-Key": API_KEY },
     credentials: "include",
@@ -125,10 +125,13 @@ export function useAudioRecorderVAD() {
       try {
         console.log(`🎙️ [${t()}] Starting Init`);
         const vad = await MicVAD.new({
-          modelURL: "/silero_vad_legacy.onnx",
-          workletURL: "/vad.worklet.bundle.min.js",
-          ortConfig: (ort) => { ort.env.wasm.wasmPaths = "/"; },
+          baseAssetPath: "/spark/",
+          onnxWASMBasePath: "/spark/",
+          modelURL: "/spark/silero_vad_legacy.onnx",
+          workletURL: "/spark/vad.worklet.bundle.min.js",
+          ortConfig: (ort) => { ort.env.wasm.wasmPaths = "/spark/"; },
           startOnLoad: false,
+
           getStream: async () => {
             const id = deviceIdRef.current;
             console.log(`🟢 [MIC-DEBUG] >>> getStream CALLED <<<`);
