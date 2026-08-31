@@ -80,10 +80,11 @@ export default function Sidebar({ stats }) {
       <div
         ref={sidebarRef}
         className={`
-          fixed md:relative
-          top-0 left-0
-          h-full
-          z-50 md:z-auto
+          fixed md:sticky
+          top-0 md:top-4
+          left-0
+          self-start
+          z-50 md:z-20
           bg-white
           transition-transform duration-300 ease-in-out
           ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
@@ -91,14 +92,16 @@ export default function Sidebar({ stats }) {
         style={{
           width: "100px",
           border: "1px solid #e2e8f0",
-          minHeight: "calc(91vh - 46px)",
+          height: "calc(100vh - 32px)",
+          maxHeight: "calc(100vh - 32px)",
           padding: "16px",
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
           alignItems: "center",
           borderRadius: "0 13px 13px 0",
-          margin: "23px 4px 23px 4px",
+          margin: "16px 4px 16px 4px",
+          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
         }}
       >
         {/* Close button - Only visible on mobile */}
@@ -209,33 +212,42 @@ export default function Sidebar({ stats }) {
             <span style={{ fontSize: "12px", fontWeight: "500" }}>Reports</span>
           </button>
 
-          {/* Register Button
-    <button
-      onClick={() => router.push("/registerUser")}
-      style={{
-        ...buttonStyle("/registerUser"), // THIS ensures active styling
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "3px",
-        gap: "1px",
-        border: "none",
-      }}
-    >
-      <img
-        src="/spark/images/add.png"
-        alt="Register"
-        style={{
-          width: "24px",
-          height: "24px",
-          filter: pathname === "/registerUser" ? "invert(100%)" : "invert(0%)",
-        }}
-      />
-      <span style={{ fontSize: "12px", fontWeight: "500" }}>Register</span>
-    </button> */}
-
+          {/* Profile */}
+          <button
+            onClick={() => router.push("/profile")}
+            style={{
+              ...buttonStyle("/profile"),
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "3px",
+              gap: "1px",
+              border: "none",
+            }}
+          >
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              style={{
+                width: "24px",
+                height: "24px",
+                color: pathname === "/profile" ? "#ffffff" : "#012537",
+              }}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+              />
+            </svg>
+            <span style={{ fontSize: "12px", fontWeight: "500" }}>Profile</span>
+          </button>
         </div>
+
 
 
 

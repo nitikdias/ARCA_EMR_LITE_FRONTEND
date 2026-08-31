@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React from 'react';
 import ClinicalSummary from './ClinicalSummary';
 import DischargeSummary from './DischargeSummary';
 
@@ -22,9 +22,9 @@ export default function SummaryTabs({
         <div className="flex">
           <button
             onClick={() => setActiveTab('clinical')}
-            className={`flex-1 px-6 py-3 text-sm font-medium transition-colors ${
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
               activeTab === 'clinical'
-                ? 'text-gray-800 border-b-2 border-gray-800 bg-gray-50'
+                ? 'text-gray-900 border-b-2 border-[#012537] bg-gray-50 font-semibold'
                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
             }`}
           >
@@ -32,9 +32,9 @@ export default function SummaryTabs({
           </button>
           <button
             onClick={() => setActiveTab('discharge')}
-            className={`flex-1 px-6 py-3 text-sm font-medium transition-colors ${
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
               activeTab === 'discharge'
-                ? 'text-gray-800 border-b-2 border-gray-800 bg-gray-50'
+                ? 'text-gray-900 border-b-2 border-[#012537] bg-gray-50 font-semibold'
                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
             }`}
           >
@@ -45,14 +45,15 @@ export default function SummaryTabs({
 
       {/* Tab Content */}
       <div className="flex-1 overflow-hidden">
-        {activeTab === 'clinical' ? (
+        {activeTab === 'clinical' && (
           <ClinicalSummary
             sections={sections}
             setSections={setSections}
             saveSectionToDB={saveSectionToDB}
             transcript={transcript}
           />
-        ) : (
+        )}
+        {activeTab === 'discharge' && (
           <DischargeSummary
             sections={dischargeSections}
             setSections={setDischargeSections}

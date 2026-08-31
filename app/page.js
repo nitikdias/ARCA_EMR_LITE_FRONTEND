@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { toast, ToastContainer } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -15,6 +15,50 @@ import SummaryTabs from './dashboard/components/SummaryTabs';
 
 const API_KEY = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY || "";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+
+const DEFAULT_CLINICAL_SECTIONS = {
+  hpi: { title: "History of presenting complaints", content: "", editingTitle: false, editingContent: false },
+  pmh: { title: "Past Medical/Surgical History", content: "", editingTitle: false, editingContent: false },
+  familyHistory: { title: "Family History", content: "", editingTitle: false, editingContent: false },
+  lifestyle: { title: "Lifestyle History", content: "", editingTitle: false, editingContent: false },
+  physicalExam: { title: "Physical Examination", content: "", editingTitle: false, editingContent: false },
+  investigations: { title: "Investigation Summary", content: "", editingTitle: false, editingContent: false },
+  assessment: { title: "Assessment and Discussion", content: "", editingTitle: false, editingContent: false },
+  management: { title: "Management Plan", content: "", editingTitle: false, editingContent: false },
+  prescription: { title: "Prescription", content: "", editingTitle: false, editingContent: false },
+};
+
+const DEFAULT_DISCHARGE_SECTIONS = {
+  diagnosis: { title: "Diagnosis", content: "", editingTitle: false, editingContent: false },
+  admission_reason: { title: "Reason for admission", content: "", editingTitle: false, editingContent: false },
+  hpi: { title: "History of Present Illness", content: "", editingTitle: false, editingContent: false },
+  past_history: { title: "Past History", content: "", editingTitle: false, editingContent: false },
+  examination: { title: "Examination", content: "", editingTitle: false, editingContent: false },
+  lab_reports: { title: "Lab Reports", content: "", editingTitle: false, editingContent: false },
+  hospital_course: { title: "Course in the hospital", content: "", editingTitle: false, editingContent: false },
+  recommendations: { title: "Recommendations", content: "", editingTitle: false, editingContent: false },
+  followup: { title: "Follow up plan", content: "", editingTitle: false, editingContent: false },
+};
+
+function buildSectionsFromHeaders(headers, currentSections = {}, defaultSections = DEFAULT_CLINICAL_SECTIONS) {
+  if (!headers || !Array.isArray(headers) || headers.length === 0) {
+    return defaultSections;
+  }
+  const newSections = {};
+  headers.forEach((headerText, idx) => {
+    const key = `sec_${idx}`;
+    const existingMatch = Object.values(currentSections).find(
+      (s) => s && s.title && s.title.trim().toLowerCase() === String(headerText).trim().toLowerCase()
+    );
+    newSections[key] = {
+      title: String(headerText),
+      content: existingMatch ? existingMatch.content : "",
+      editingTitle: false,
+      editingContent: false,
+    };
+  });
+  return newSections;
+}
 
 export default function App() {
   const { meetingId } = useMeeting();
@@ -36,119 +80,64 @@ export default function App() {
   const [isSummaryGenerated, setIsSummaryGenerated] = useState(false);
   const [readyForSummary, setReadyForSummary] = useState(false);
   const [activeTab, setActiveTab] = useState('clinical');
-  const [sections, setSections] = useState({
-    hpi: {
-      title: "History of presenting complaints",
-      content: "",
-      editingTitle: false,
-      editingContent: false
-    },
-    pmh: {
-      title: "Past Medical/Surgical History",
-      content: "",
-      editingTitle: false,
-      editingContent: false
-    },
-    familyHistory: {
-      title: "Family History",
-      content: "",
-      editingTitle: false,
-      editingContent: false
-    },
-    lifestyle: {
-      title: "Lifestyle History",
-      content: "",
-      editingTitle: false,
-      editingContent: false
-    },
-    physicalExam: {
-      title: "Physical Examination",
-      content: "",
-      editingTitle: false,
-      editingContent: false
-    },
-    investigations: {
-      title: "Investigation Summary",
-      content: "",
-      editingTitle: false,
-      editingContent: false
-    },
-    assessment: {
-      title: "Assessment and Discussion",
-      content: "",
-      editingTitle: false,
-      editingContent: false
-    },
-    management: {
-      title: "Management Plan",
-      content: "",
-      editingTitle: false,
-      editingContent: false
-    },
-    prescription: {
-      title: "Prescription",
-      content: "",
-      editingTitle: false,
-      editingContent: false
-    },
-  });
+  const [sections, setSections] = useState(DEFAULT_CLINICAL_SECTIONS);
+  const [dischargeSections, setDischargeSections] = useState(DEFAULT_DISCHARGE_SECTIONS);
 
-  const [dischargeSections, setDischargeSections] = useState({
-    diagnosis: {
-      title: "Diagnosis",
-      content: "",
-      editingTitle: false,
-      editingContent: false
-    },
-    admission_reason: {
-      title: "Reason for admission",
-      content: "",
-      editingTitle: false,
-      editingContent: false
-    },
-    hpi: {
-      title: "History of Present Illness",
-      content: "",
-      editingTitle: false,
-      editingContent: false
-    },
-    past_history: {
-      title: "Past History",
-      content: "",
-      editingTitle: false,
-      editingContent: false
-    },
-    examination: {
-      title: "Examination",
-      content: "",
-      editingTitle: false,
-      editingContent: false
-    },
-    lab_reports: {
-      title: "Lab Reports",
-      content: "",
-      editingTitle: false,
-      editingContent: false
-    },
-    hospital_course: {
-      title: "Course in the hospital",
-      content: "",
-      editingTitle: false,
-      editingContent: false
-    },
-    recommendations: {
-      title: "Recommendations",
-      content: "",
-      editingTitle: false,
-      editingContent: false
-    },
-    followup: {
-      title: "Follow up plan",
-      content: "",
-      editingTitle: false,
-      editingContent: false
-    },
-  });
+  // Sync template headers from user's selected DB templates
+  const syncUserTemplatesAndHeaders = useCallback(async () => {
+    const userId = user?.id || (typeof window !== "undefined" ? localStorage.getItem("userId") : null);
+    if (!userId) return;
+
+    try {
+      let res = await fetch(`/spark/api/profile/templates?user_id=${userId}`, {
+        credentials: "include",
+      });
+      if (!res.ok) res = await fetch(`/api/profile/templates?user_id=${userId}`);
+
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.templates)) {
+          const clinicalTemplate = data.templates.find(
+            (t) => (t.type || "").toLowerCase() === "clinical"
+          );
+          const dischargeTemplate = data.templates.find(
+            (t) => (t.type || "").toLowerCase() === "discharge"
+          );
+
+          if (clinicalTemplate && clinicalTemplate.headers && clinicalTemplate.headers.length > 0) {
+            setSections((prev) => buildSectionsFromHeaders(clinicalTemplate.headers, prev, DEFAULT_CLINICAL_SECTIONS));
+          } else {
+            setSections((prev) => buildSectionsFromHeaders([], prev, DEFAULT_CLINICAL_SECTIONS));
+          }
+
+          if (dischargeTemplate && dischargeTemplate.headers && dischargeTemplate.headers.length > 0) {
+            setDischargeSections((prev) => buildSectionsFromHeaders(dischargeTemplate.headers, prev, DEFAULT_DISCHARGE_SECTIONS));
+          } else {
+            setDischargeSections((prev) => buildSectionsFromHeaders([], prev, DEFAULT_DISCHARGE_SECTIONS));
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Notice: Could not sync user template headers:", err);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    syncUserTemplatesAndHeaders();
+
+    const handleTemplatesUpdated = () => {
+      syncUserTemplatesAndHeaders();
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("templatesUpdated", handleTemplatesUpdated);
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("templatesUpdated", handleTemplatesUpdated);
+      }
+    };
+  }, [syncUserTemplatesAndHeaders]);
 
 
   const {
@@ -489,8 +478,14 @@ export default function App() {
         // Update discharge sections with generated content
         const updatedDischargeSections = { ...dischargeSections };
         Object.keys(updatedDischargeSections).forEach((key) => {
-          const contentFromBackend = data.sections[key] || data.sections[key.toLowerCase()] || "";
-          console.log(`🔑 Key '${key}': Backend Content Length=${contentFromBackend.length}`);
+          const title = updatedDischargeSections[key]?.title;
+          const contentFromBackend =
+            data.sections[key] ||
+            data.sections[key.toLowerCase()] ||
+            (title && data.sections[title]) ||
+            (title && data.sections[title.toLowerCase()]) ||
+            "";
+          console.log(`🔑 Key '${key}' (${title}): Backend Content Length=${contentFromBackend.length}`);
           if (contentFromBackend) {
             updatedDischargeSections[key].content = contentFromBackend;
           }
@@ -650,8 +645,14 @@ export default function App() {
       // Update sections with generated content
       const updatedSections = { ...sections };
       Object.keys(updatedSections).forEach((key) => {
-        const contentFromBackend = data.sections[key] || data.sections[key.toLowerCase()] || "";
-        console.log(`🔑 Key '${key}': Backend Content Length=${contentFromBackend.length}`);
+        const title = updatedSections[key]?.title;
+        const contentFromBackend =
+          data.sections[key] ||
+          data.sections[key.toLowerCase()] ||
+          (title && data.sections[title]) ||
+          (title && data.sections[title.toLowerCase()]) ||
+          "";
+        console.log(`🔑 Key '${key}' (${title}): Backend Content Length=${contentFromBackend.length}`);
         if (contentFromBackend) {
           updatedSections[key].content = contentFromBackend;
         }

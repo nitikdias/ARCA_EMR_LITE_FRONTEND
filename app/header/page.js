@@ -81,6 +81,7 @@ export default function Header({ handleLogout }) {
         {/* Desktop view */}
         <div className="hidden md:flex" style={{ alignItems: 'center', gap: '16px' }}>
           <div
+            onClick={() => router.push("/profile")}
             style={{
               width: '32px',
               height: '32px',
@@ -88,8 +89,10 @@ export default function Header({ handleLogout }) {
               borderRadius: '50%',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              cursor: 'pointer'
             }}
+            title="View Profile"
           >
             <span style={{ color: 'black', fontSize: '12px', fontWeight: 'bold' }}>
               {getInitials()}
@@ -117,22 +120,55 @@ export default function Header({ handleLogout }) {
                   boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
                   padding: "8px",
                   zIndex: 10,
-                  marginTop: "4px"
+                  marginTop: "4px",
+                  minWidth: "150px"
                 }}
               >
+                <button
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    router.push("/profile");
+                  }}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "6px 8px",
+                    width: "100%",
+                    textAlign: "left",
+                    fontSize: "14px",
+                    color: "#012537",
+                    fontWeight: "500",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px"
+                  }}
+                >
+                  <svg style={{ width: "16px", height: "16px" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  My Profile
+                </button>
+                <div style={{ height: "1px", backgroundColor: "#e2e8f0", margin: "4px 0" }} />
                 <button
                   onClick={handleLogout}
                   style={{
                     background: "transparent",
                     border: "none",
                     cursor: "pointer",
-                    padding: "4px 8px",
+                    padding: "6px 8px",
                     width: "100%",
                     textAlign: "left",
                     fontSize: "14px",
-                    color: "black",
+                    color: "#ef4444",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px"
                   }}
                 >
+                  <svg style={{ width: "16px", height: "16px" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
                   Logout
                 </button>
               </div>
@@ -185,6 +221,31 @@ export default function Header({ handleLogout }) {
                 {user?.email || "Loading..."}
               </div>
               <button
+                onClick={() => {
+                  setDropdownOpen(false);
+                  router.push("/profile");
+                }}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: "8px 12px",
+                  width: "100%",
+                  textAlign: "left",
+                  fontSize: "14px",
+                  color: "#012537",
+                  fontWeight: "500",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px"
+                }}
+              >
+                <svg style={{ width: "16px", height: "16px" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                My Profile
+              </button>
+              <button
                 onClick={handleLogout}
                 style={{
                   background: "transparent",
@@ -194,9 +255,15 @@ export default function Header({ handleLogout }) {
                   width: "100%",
                   textAlign: "left",
                   fontSize: "14px",
-                  color: "black",
+                  color: "#ef4444",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px"
                 }}
               >
+                <svg style={{ width: "16px", height: "16px" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
                 Logout
               </button>
             </div>
